@@ -83,6 +83,8 @@ def get_data_loaders(split_data_dir, crop_size, batch_size):
     mean, std = calculate_normalization_values(os.path.join(split_data_dir, 'train'), crop_size, batch_size)
 
     final_transform = transforms.Compose([
+        # transforms.CenterCrop(crop_size),
+        transforms.Resize(crop_size),
         transforms.CenterCrop(crop_size),
         transforms.RandomRotation(20),
         transforms.ColorJitter(brightness=0.2, contrast=0.2, saturation=0.2, hue=0.1),
