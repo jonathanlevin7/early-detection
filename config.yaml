@@ -1,0 +1,18 @@
+data:
+  original_data_path: "data/raw"  # Path to original data
+  split_data_path: "data/split"  # Path to save processed data
+  train_split: 0.7
+  val_split: 0.15
+  test_split: 0.15
+  seed: 42
+
+transforms:
+  crop_size: 256
+
+training:
+  batch_size: 16
+  epochs: 100
+  learning_rate: 0.001
+
+model:
+  architecture: "get_resnet50"
