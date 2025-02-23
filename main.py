@@ -10,7 +10,7 @@ from torch.utils.data import DataLoader
 import yaml
 
 from src.data_handler.split_data import split_data
-from src.data_handler.dataloader import AircraftDataset, calculate_normalization_values
+from src.data_handler.dataloader import get_data_loaders
 from src.models.architectures import get_resnet50
 
 def load_config(config_path):
@@ -21,44 +21,25 @@ def load_config(config_path):
 def main(config):
     """Main function to run the aircraft detection pipeline."""
 
+    original_data_dir = config['data']['original_data_path']
+    split_data_dir = config['data']['split_data_path']
+    crop_size = config['transforms']['crop_size']
+    batch_size = config['training']['batch_size']
+
+    train_split = config['data']['train_split']
+    val_split = config['data']['val_split']
+    test_split = config['data']['test_split']
+    seed = config['data']['seed']
+
     # 1. Split the data
-    split_data(config['data']['original_data_path'],
-               config['data']['split_data_path'],
-               [config['data']['train_split'], config['data']['val_split'], config['data']['test_split']],
-               config['data']['seed'])
-
-    # 2. Calculate normalization values
-    train_dir = os.path.join(config['data']['split_data_path'], 'train')
-    mean, std = calculate_normalization_values(train_dir, config['transforms']['crop_size'], config['training']['batch_size'])
-
-    # 3. Define transforms with calculated mean and std
-    final_transform = transforms.Compose([
-        transforms.CenterCrop(config['transforms']['crop_size']),
-        transforms.RandomRotation(20),
-        transforms.ColorJitter(brightness=0.2, contrast=0.2, saturation=0.2, hue=0.1),
-        transforms.RandomPerspective(distortion_scale=0.5, p=0.5),
-        transforms.ToTensor(),
-        transforms.Normalize(mean=mean, std=std)  # Use calculated mean and std
-    ])
-
-    # 4. Create datasets
-    train_dataset = AircraftDataset(train_dir, transform=final_transform)
-    val_dataset = AircraftDataset(os.path.join(config['data']['split_data_path'], 'validation'), transform=final_transform)
-    test_dataset = AircraftDataset(os.path.join(config['data']['split_data_path'], 'test'), transform=final_transform)
-
-    # Debugging: Print dataset sizes
-    print(f"Training data directory: {train_dir}")
-    print(f"Number of training samples: {len(train_dataset)}")
-    print(f"Number of validation samples: {len(val_dataset)}")
-    print(f"Number of test samples: {len(test_dataset)}")
-
-    # 5. Create DataLoaders
-    train_loader = DataLoader(train_dataset, batch_size=config['training']['batch_size'], shuffle=True)
-    val_loader = DataLoader(val_dataset, batch_size=config['training']['batch_size'], shuffle=False)
-    test_loader = DataLoader(test_dataset, batch_size=config['training']['batch_size'], shuffle=False)
+    split_data(original_data_dir,
+               split_data_dir,
+               [train_split, val_split, test_split],
+               seed)
+    
+    train_loader, val_loader, test_loader, num_classes, _, _ = get_data_loaders(split_data_dir, crop_size, batch_size)
 
     # 6. Load the Model
-    num_classes = len(train_dataset.classes)
     if config['model']['architecture'] == "get_resnet50":
         model = get_resnet50(num_classes)
     # elif config['model']['architecture'] == "get_custom_cnn":

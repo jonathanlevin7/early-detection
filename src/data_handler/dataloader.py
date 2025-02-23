@@ -5,6 +5,7 @@ import torch
 from torch.utils.data import Dataset, DataLoader
 from torchvision import datasets, transforms
 from PIL import Image
+import yaml
 
 VALID_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.ppm', '.bmp', '.pgm', '.tif', '.tiff', '.webp']
 
@@ -75,6 +76,36 @@ def calculate_normalization_values(data_dir, crop_size, batch_size):
     std /= total_images
 
     return mean, std
+
+def get_data_loaders(split_data_dir, crop_size, batch_size):
+    """Create DataLoaders for train, validation, and test sets."""
+
+    mean, std = calculate_normalization_values(os.path.join(split_data_dir, 'train'), crop_size, batch_size)
+
+    final_transform = transforms.Compose([
+        transforms.CenterCrop(crop_size),
+        transforms.RandomRotation(20),
+        transforms.ColorJitter(brightness=0.2, contrast=0.2, saturation=0.2, hue=0.1),
+        transforms.RandomPerspective(distortion_scale=0.5, p=0.5),
+        transforms.ToTensor(),
+        transforms.Normalize(mean=mean, std=std)  # Use calculated mean and std
+    ])
+
+    train_dir = os.path.join(split_data_dir, 'train')
+    val_dir = os.path.join(split_data_dir, 'validation')
+    test_dir = os.path.join(split_data_dir, 'test')
+
+    train_dataset = AircraftDataset(train_dir, transform=final_transform)
+    val_dataset = AircraftDataset(val_dir, transform=final_transform)
+    test_dataset = AircraftDataset(test_dir, transform=final_transform)
+
+    num_classes = len(train_dataset.classes)
+
+    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
+    val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False)
+    test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
+
+    return train_loader, val_loader, test_loader, num_classes, mean, std
 
 # Example usage (in your main.py or notebook)
 if __name__ == "__main__":
