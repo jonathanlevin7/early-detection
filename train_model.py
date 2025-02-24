@@ -2,7 +2,7 @@
 import torch
 import pytorch_lightning as pl
 from pytorch_lightning.callbacks import ModelCheckpoint
-from models.architectures import ResNet50Classifier
+from src.models.architectures import ResNet50Classifier
 from src.data_handler.dataloader import get_data_loaders
 import yaml
 import os

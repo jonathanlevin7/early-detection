@@ -112,11 +112,14 @@ def get_data_loaders(split_data_dir, crop_size, batch_size, full_transform = Tru
     val_dataset = AircraftDataset(val_dir, transform=final_transform)
     test_dataset = AircraftDataset(test_dir, transform=final_transform)
 
+    config = yaml.safe_load(open("config.yaml"))
+
+    num_workers = config['training']['num_workers']
     num_classes = len(train_dataset.classes)
 
-    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
-    val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False)
-    test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
+    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=num_workers)
+    val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False, num_workers=num_workers)
+    test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False, num_workers=num_workers)
 
     return train_loader, val_loader, test_loader, num_classes, mean, std
 
