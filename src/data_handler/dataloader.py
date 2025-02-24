@@ -45,6 +45,7 @@ def calculate_normalization_values(data_dir, crop_size, batch_size):
     """Calculates normalization mean and std from raw images."""
 
     transform = transforms.Compose([
+        transforms.Resize(crop_size),
         transforms.CenterCrop(crop_size),
         transforms.ToTensor()
     ])
@@ -77,21 +78,31 @@ def calculate_normalization_values(data_dir, crop_size, batch_size):
 
     return mean, std
 
-def get_data_loaders(split_data_dir, crop_size, batch_size):
+def get_data_loaders(split_data_dir, crop_size, batch_size, full_transform = True):
     """Create DataLoaders for train, validation, and test sets."""
 
-    mean, std = calculate_normalization_values(os.path.join(split_data_dir, 'train'), crop_size, batch_size)
+    if full_transform:
+        mean, std = calculate_normalization_values(os.path.join(split_data_dir, 'train'), crop_size, batch_size)
 
-    final_transform = transforms.Compose([
-        # transforms.CenterCrop(crop_size),
-        transforms.Resize(crop_size),
-        transforms.CenterCrop(crop_size),
-        transforms.RandomRotation(20),
-        transforms.ColorJitter(brightness=0.2, contrast=0.2, saturation=0.2, hue=0.1),
-        transforms.RandomPerspective(distortion_scale=0.5, p=0.5),
-        transforms.ToTensor(),
-        transforms.Normalize(mean=mean, std=std)  # Use calculated mean and std
-    ])
+        final_transform = transforms.Compose([
+            # transforms.CenterCrop(crop_size),
+            transforms.Resize(crop_size),
+            transforms.CenterCrop(crop_size),
+            transforms.RandomRotation(20),
+            transforms.ColorJitter(brightness=0.2, contrast=0.2, saturation=0.2, hue=0.1),
+            transforms.RandomPerspective(distortion_scale=0.5, p=0.5),
+            transforms.ToTensor(),
+            transforms.Normalize(mean=mean, std=std)  # Use calculated mean and std
+        ])
+    else:
+        mean = torch.zeros(3)
+        std = torch.ones(3)
+        final_transform = transforms.Compose([
+            transforms.Resize(crop_size),
+            transforms.CenterCrop(crop_size),
+            transforms.ToTensor(),
+        # transforms.Normalize(mean=mean, std=std)  # Use calculated
+        ])
 
     train_dir = os.path.join(split_data_dir, 'train')
     val_dir = os.path.join(split_data_dir, 'validation')
