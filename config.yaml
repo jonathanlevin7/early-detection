@@ -15,4 +15,4 @@ training:
   learning_rate: 0.001
 
 model:
-  architecture: "get_resnet50"
+  architecture: resnet50
