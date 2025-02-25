@@ -62,11 +62,13 @@ class ResNet50Classifier(pl.LightningModule):
         inputs, labels = batch
         outputs = self(inputs)
         loss = self.criterion(outputs, labels)
-
-        # Log metrics
         preds = torch.argmax(outputs, dim=1)
-        acc = self.val_acc(preds, labels)
 
+        # print(f"Val - Labels: {labels}")
+        # print(f"Val - Predictions: {preds}")
+        # print(f"Val - Outputs: {outputs}")
+
+        acc = self.val_acc(preds, labels)
         self.log('val_loss', loss, on_step=False, on_epoch=True, prog_bar=True)
         self.log('val_acc', acc, on_step=False, on_epoch=True, prog_bar=True)
 

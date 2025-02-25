@@ -2,16 +2,13 @@
 
 import argparse
 import os
-import torch
-import torch.nn as nn
-import torch.optim as optim
-from torchvision import transforms
-from torch.utils.data import DataLoader
+import pytorch_lightning as pl
+from pytorch_lightning.callbacks import ModelCheckpoint
 import yaml
 
 from src.data_handler.split_data import split_data
 from src.data_handler.dataloader import get_data_loaders
-from src.models.architectures import get_resnet50
+from src.models.architectures import ResNet50Classifier  # Assuming you're using ResNet50Classifier
 
 def load_config(config_path):
     """Loads configuration settings from a YAML file."""
@@ -30,35 +27,58 @@ def main(config):
     val_split = config['data']['val_split']
     test_split = config['data']['test_split']
     seed = config['data']['seed']
+    epochs = config['training']['epochs']
 
-    # 1. Split the data
-    split_data(original_data_dir,
-               split_data_dir,
-               [train_split, val_split, test_split],
-               seed)
+    # # Split the data
+    # split_data(original_data_dir,
+    #            split_data_dir,
+    #            [train_split, val_split, test_split],
+    #            seed)
+
+    if not os.path.exists(os.path.join(split_data_dir, 'train')):
+        split_data(original_data_dir,
+                split_data_dir,
+                [train_split, val_split, test_split],
+                seed)
+    else:
+        print(f"Split data directory '{split_data_dir}' already exists. Skipping data splitting.")
     
     train_loader, val_loader, test_loader, num_classes, _, _ = get_data_loaders(split_data_dir, crop_size, batch_size)
 
-    # 6. Load the Model
-    if config['model']['architecture'] == "get_resnet50":
-        model = get_resnet50(num_classes)
-    # elif config['model']['architecture'] == "get_custom_cnn":
-    #     model = get_custom_cnn(num_classes)
-    # elif config['model']['architecture'] == "get_efficientnet":
-    #     model = get_efficientnet(num_classes)
+    # Load the Model
+    if config['model']['architecture'] == "resnet50":
+        model = ResNet50Classifier(num_classes=num_classes, learning_rate=config['training']['learning_rate'])
     else:
         raise ValueError(f"Invalid model architecture: {config['model']['architecture']}")
 
-    # 7. Criterion and Optimizer
-    criterion = nn.CrossEntropyLoss()
-    optimizer = optim.Adam(model.fc.parameters(), lr=config['training']['learning_rate'])
+    # Checkpoint Callback
+    checkpoint_callback = ModelCheckpoint(
+        monitor='val_loss',
+        dirpath='./checkpoints',
+        filename='resnet50-{epoch:02d}-{val_loss:.2f}',
+        save_top_k=3,
+        mode='min',
+    )
 
-    # 8. Basic Print to test data loading.
-    images, labels = next(iter(train_loader))
-    print(f"Batch of images shape: {images.shape}, labels shape: {labels.shape}")
-    print(f"Model: {model}")
+    # Trainer
+    trainer = pl.Trainer(
+        max_epochs=epochs,
+        callbacks=[checkpoint_callback],
+        accelerator='auto',
+        devices='auto'
+    )
 
-    # 9. Model Training and Evaluation will go here in the future.
+    # Training and Testing
+    trainer.fit(model, train_loader, val_loader)
+    trainer.test(model, test_loader)
+
+    # Save confusion matrix data
+    from train_model import calculate_confusion_matrix # Import the function
+    calculate_confusion_matrix(model, test_loader, num_classes)
+
+    # Calculate and print classification report
+    from train_model import calculate_classification_report # Import the function
+    calculate_classification_report(model, test_loader, num_classes)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Military Aircraft Early Detection")

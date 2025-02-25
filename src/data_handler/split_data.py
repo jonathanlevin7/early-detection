@@ -9,7 +9,7 @@ VALID_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.ppm', '.bmp', '.pgm', '.tif', '.t
 
 def split_data(original_data_path, split_data_path, split_ratio, seed):
     """
-    Splits image data into train, validation, and test sets.
+    Splits image data into train, validation, and test sets with class-specific counts.
 
     Args:
         original_data_path (str): Path to the directory containing class subdirectories.
@@ -57,11 +57,15 @@ def split_data(original_data_path, split_data_path, split_ratio, seed):
                 os.makedirs(dest_path)
             shutil.copy(image_path, dest_path)
 
-    # Print set sizes
+    # Print set sizes with class-specific counts
     for folder in ['train', 'validation', 'test']:
         folder_path = os.path.join(split_data_path, folder)
-        num_files = sum([len(files) for r, d, files in os.walk(folder_path)])
-        print(f'{folder} set has {num_files} files')
+        print(f'\n{folder} set:')
+        for class_name in os.listdir(folder_path):
+            class_path = os.path.join(folder_path, class_name)
+            if os.path.isdir(class_path):
+                num_files = len([f for f in os.listdir(class_path) if f.lower().endswith(tuple(VALID_EXTENSIONS))])
+                print(f'  Class {class_name}: {num_files} files')
 
 if __name__ == "__main__":
     # Example usage (adjust data_path as needed)

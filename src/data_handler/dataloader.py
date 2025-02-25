@@ -24,8 +24,10 @@ class AircraftDataset(Dataset):
             if os.path.isdir(class_path):  # Ensure it's a directory
                 for file_name in os.listdir(class_path):
                     if any(file_name.lower().endswith(ext) for ext in VALID_EXTENSIONS):
-                        self.image_files.append(os.path.join(class_path, file_name))
+                        full_path = os.path.join(class_path, file_name)
+                        self.image_files.append(full_path)
                         self.targets.append(self.class_to_idx[class_name]) #use the class to index mapping.
+                        # print(f"Loaded: {full_path}, Label: {self.class_to_idx[class_name]}") #added print statement
 
         print(f"Found {len(self.image_files)} files in {data_dir}")
         print(f"Files found: {self.image_files}")
@@ -39,6 +41,7 @@ class AircraftDataset(Dataset):
         if self.transform:
             image = self.transform(image)
         label = self.targets[idx] #get the label.
+        # print(f"GetItem - Path: {img_path}, Label: {label}") #added print statement
         return image, label #return image and label.
 
 def calculate_normalization_values(data_dir, crop_size, batch_size):
@@ -107,6 +110,10 @@ def get_data_loaders(split_data_dir, crop_size, batch_size, full_transform=True)
     train_dir = os.path.join(split_data_dir, 'train')
     val_dir = os.path.join(split_data_dir, 'validation')
     test_dir = os.path.join(split_data_dir, 'test')
+
+    print(f"Train directory: {train_dir}") #added print statement
+    print(f"Validation directory: {val_dir}") #added print statement
+    print(f"Test directory: {test_dir}") #added print statement
 
     train_dataset = AircraftDataset(train_dir, transform=final_transform)
     val_dataset = AircraftDataset(val_dir, transform=final_transform)
