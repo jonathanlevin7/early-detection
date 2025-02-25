@@ -1,4 +1,3 @@
-# train_model.py
 import torch
 import pytorch_lightning as pl
 from pytorch_lightning.callbacks import ModelCheckpoint
@@ -7,11 +6,50 @@ from src.data_handler.dataloader import get_data_loaders
 import yaml
 import os
 import argparse
+from torchmetrics.classification import MulticlassConfusionMatrix
+import json
 
 def load_config(config_path):
     """Loads the configuration from a YAML file."""
     with open(config_path, 'r') as file:
         return yaml.safe_load(file)
+
+def save_confusion_matrix(conf_matrix, class_names, output_dir='outputs'):
+    """Saves the confusion matrix as a JSON file."""
+    output_dir = str(output_dir)  # Ensure output_dir is a string
+    os.makedirs(output_dir, exist_ok=True)
+    
+    conf_matrix_data = {
+        "confusion_matrix": conf_matrix.cpu().tolist(),
+        "class_names": class_names
+    }
+    
+    with open(os.path.join(output_dir, "confusion_matrix.json"), "w") as f:
+        json.dump(conf_matrix_data, f, indent=4)
+    print(f"Confusion matrix saved to {output_dir}/confusion_matrix.json")
+
+def calculate_confusion_matrix(model, test_loader, num_classes):
+    """Calculates and saves the confusion matrix."""
+    conf_matrix = MulticlassConfusionMatrix(num_classes=num_classes).to(model.device)
+    model.eval()
+    
+    all_preds = []
+    all_labels = []
+
+    with torch.no_grad():
+        for batch in test_loader:
+            inputs, labels = batch
+            inputs, labels = inputs.to(model.device), labels.to(model.device)
+            outputs = model(inputs)
+            preds = torch.argmax(outputs, dim=1)
+            all_preds.append(preds)
+            all_labels.append(labels)
+
+    all_preds = torch.cat(all_preds)
+    all_labels = torch.cat(all_labels)
+    
+    conf_matrix.update(all_preds, all_labels)
+    save_confusion_matrix(conf_matrix.compute(), [str(i) for i in range(num_classes)])
 
 def train_model(config_path):
     """
@@ -20,7 +58,6 @@ def train_model(config_path):
     Args:
         config_path (str): Path to the configuration YAML file.
     """
-
     config = load_config(config_path)
 
     # Seed
@@ -46,9 +83,10 @@ def train_model(config_path):
     if architecture == "resnet50":
         model = ResNet50Classifier(num_classes=num_classes, learning_rate=learning_rate)
     else:
-        pass
+        raise ValueError(f"Unsupported architecture: {architecture}")
 
     # Checkpoint Callback
+    os.makedirs('./checkpoints', exist_ok=True) # Ensure Checkpoint directory exists.
     checkpoint_callback = ModelCheckpoint(
         monitor='val_loss',
         dirpath='./checkpoints',
@@ -68,6 +106,9 @@ def train_model(config_path):
     # Training and Testing
     trainer.fit(model, train_loader, val_loader)
     trainer.test(model, test_loader)
+
+    # Save confusion matrix data
+    calculate_confusion_matrix(model, test_loader, num_classes) # Corrected function call
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Train a model.")
