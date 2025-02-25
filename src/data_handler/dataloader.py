@@ -119,7 +119,11 @@ def get_data_loaders(split_data_dir, crop_size, batch_size, full_transform=True)
     val_dataset = AircraftDataset(val_dir, transform=final_transform)
     test_dataset = AircraftDataset(test_dir, transform=final_transform)
 
-    config = yaml.safe_load(open("config.yaml"))
+    # config = yaml.safe_load(open("config.yaml"))
+    config_path = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "../../config.yaml"))
+    with open(config_path, 'r') as file:
+        config = yaml.safe_load(file
+        )
 
     num_workers = config['training']['num_workers']
 
