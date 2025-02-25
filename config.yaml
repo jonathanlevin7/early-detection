@@ -7,7 +7,7 @@ data:
   seed: 42
 
 transforms:
-  crop_size: 256
+  crop_size: 128
 
 training:
   batch_size: 16
