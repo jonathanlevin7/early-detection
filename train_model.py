@@ -6,8 +6,9 @@ from src.data_handler.dataloader import get_data_loaders
 import yaml
 import os
 import argparse
-from torchmetrics.classification import MulticlassConfusionMatrix
+from torchmetrics.classification import MulticlassConfusionMatrix, MulticlassPrecision, MulticlassRecall, MulticlassF1Score
 import json
+from sklearn.metrics import classification_report
 
 def load_config(config_path):
     """Loads the configuration from a YAML file."""
@@ -50,6 +51,28 @@ def calculate_confusion_matrix(model, test_loader, num_classes):
     
     conf_matrix.update(all_preds, all_labels)
     save_confusion_matrix(conf_matrix.compute(), [str(i) for i in range(num_classes)])
+
+def calculate_classification_report(model, test_loader, num_classes):
+    """Calculates and prints the classification report."""
+    model.eval()
+    
+    all_preds = []
+    all_labels = []
+
+    with torch.no_grad():
+        for batch in test_loader:
+            inputs, labels = batch
+            inputs, labels = inputs.to(model.device), labels.to(model.device)
+            outputs = model(inputs)
+            preds = torch.argmax(outputs, dim=1)
+            all_preds.append(preds.cpu())
+            all_labels.append(labels.cpu())
+
+    all_preds = torch.cat(all_preds).numpy()
+    all_labels = torch.cat(all_labels).numpy()
+
+    report = classification_report(all_labels, all_preds, target_names=[str(i) for i in range(num_classes)])
+    print("Classification Report:\n", report)
 
 def train_model(config_path):
     """
@@ -109,6 +132,9 @@ def train_model(config_path):
 
     # Save confusion matrix data
     calculate_confusion_matrix(model, test_loader, num_classes) # Corrected function call
+
+    # Calculate and print classification report
+    calculate_classification_report(model, test_loader, num_classes)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Train a model.")
