@@ -78,7 +78,7 @@ def calculate_normalization_values(data_dir, crop_size, batch_size):
 
     return mean, std
 
-def get_data_loaders(split_data_dir, crop_size, batch_size, full_transform = True):
+def get_data_loaders(split_data_dir, crop_size, batch_size, full_transform=True):
     """Create DataLoaders for train, validation, and test sets."""
 
     if full_transform:
@@ -115,7 +115,9 @@ def get_data_loaders(split_data_dir, crop_size, batch_size, full_transform = Tru
     config = yaml.safe_load(open("config.yaml"))
 
     num_workers = config['training']['num_workers']
-    num_classes = len(train_dataset.classes)
+
+    # Determine num_classes correctly
+    num_classes = len([name for name in os.listdir(train_dir) if os.path.isdir(os.path.join(train_dir, name))])
 
     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=num_workers)
     val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False, num_workers=num_workers)

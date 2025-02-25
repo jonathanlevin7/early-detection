@@ -17,7 +17,9 @@ class AircraftDatasetFilter(Dataset):
         self.targets = []
         self.classes = sorted(os.listdir(data_dir))
         self.class_to_idx = {cls_name: i for i, cls_name in enumerate(self.classes)} # create a class to index mapping.
-        self.crop_size = yaml.safe_load_config("config.yaml")["transforms"]["crop_size"]
+        with open("config.yaml", 'r') as config_file:
+            config = yaml.safe_load(config_file)
+        self.crop_size = config["transforms"]["crop_size"]
 
         photos_loaded = {}
         photos_skipped = {}

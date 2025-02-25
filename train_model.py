@@ -23,6 +23,10 @@ def train_model(config_path):
 
     config = load_config(config_path)
 
+    # Seed
+    seed = config['data']['seed']
+    pl.seed_everything(seed)
+
     # Data Loading
     data_dir = config['data']['split_data_path']
     crop_size = config['transforms']['crop_size']
@@ -31,6 +35,8 @@ def train_model(config_path):
     train_loader, val_loader, test_loader, num_classes, mean, std = get_data_loaders(
         data_dir, crop_size, batch_size
     )
+
+    print(f"Number of classes: {num_classes}")
 
     # Model Initialization
     learning_rate = config['training']['learning_rate']

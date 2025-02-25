@@ -3,6 +3,11 @@ import torch.nn as nn
 import torchvision.models as models
 import pytorch_lightning as pl
 from torchmetrics import Accuracy
+import yaml
+
+config = yaml.safe_load(open("config.yaml"))
+
+pl.seed_everything(config['data']['seed'])
 
 class ResNet50Classifier(pl.LightningModule):
     def __init__(self, num_classes, pretrained=True, learning_rate=1e-3):
