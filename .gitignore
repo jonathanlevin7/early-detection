@@ -3,3 +3,7 @@ __pycache__/
 notes.txt
 checkpoints/
 lightning_logs/
+.ipynb_checkpoints/
+assets/.ipynb_checkpoints/
+notebooks/.ipynb_checkpoints/
+
