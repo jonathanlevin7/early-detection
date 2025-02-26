@@ -61,5 +61,6 @@ class AircraftDatasetFilter(Dataset):
         return image, label #return image and label.
 
 if __name__ == "__main__":
-    data_dir = "data/raw"
+    # data_dir = "data/raw"
+    data_dir = "/projects/dsci410_510/Levin_MAED/data/raw"
     filtered_dataset = AircraftDatasetFilter(data_dir)

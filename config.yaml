@@ -1,6 +1,8 @@
 data:
-  original_data_path: "data/raw"  # Path to original data
-  split_data_path: "data/split"  # Path to save processed data
+  # original_data_path: "data/raw"  # Path to original data
+  original_data_path: "/projects/dsci410_510/Levin_MAED/data/raw"
+  # split_data_path: "data/split"  # Path to save processed data
+  split_data_path: "/projects/dsci410_510/Levin_MAED/data/split"
   train_split: 0.7
   val_split: 0.15
   test_split: 0.15

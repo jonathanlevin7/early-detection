@@ -139,6 +139,7 @@ def get_data_loaders(split_data_dir, crop_size, batch_size, full_transform=True)
 # Example usage (in your main.py or notebook)
 if __name__ == "__main__":
     # Example usage.
-    mean, std = calculate_normalization_values("data/split/train", crop_size=256, batch_size=16)
+    # mean, std = calculate_normalization_values("data/split/train", crop_size=256, batch_size=16)
+    mean, std = calculate_normalization_values("/projects/dsci410_510/Levin_MAED/data/split/train", crop_size=256, batch_size=16)
     print(f"Calculated mean: {mean}")
     print(f"Calculated std: {std}")

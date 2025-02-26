@@ -69,8 +69,10 @@ def split_data(original_data_path, split_data_path, split_ratio, seed):
 
 if __name__ == "__main__":
     # Example usage (adjust data_path as needed)
-    original_data_path = "data/raw"
-    split_data_path = "data/split"
+    # original_data_path = "data/raw"
+    original_data_path = "/projects/dsci410_510/Levin_MAED/data/raw"
+    # split_data_path = "data/split"
+    split_data_path = "/projects/dsci410_510/Levin_MAED/data/split"
     split_ratio = [0.7, 0.15, 0.15]
     seed = 42
     split_data(original_data_path, split_data_path, split_ratio, seed)
