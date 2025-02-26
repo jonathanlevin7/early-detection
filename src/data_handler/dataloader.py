@@ -30,7 +30,7 @@ class AircraftDataset(Dataset):
                         # print(f"Loaded: {full_path}, Label: {self.class_to_idx[class_name]}") #added print statement
 
         print(f"Found {len(self.image_files)} files in {data_dir}")
-        print(f"Files found: {self.image_files}")
+        # print(f"Files found: {self.image_files}")
 
     def __len__(self):
         return len(self.image_files)
