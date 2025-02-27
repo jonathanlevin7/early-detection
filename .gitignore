@@ -6,4 +6,5 @@ lightning_logs/
 .ipynb_checkpoints/
 assets/.ipynb_checkpoints/
 notebooks/.ipynb_checkpoints/
-
+MAED
+check_cuda.py

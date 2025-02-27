@@ -1,5 +1,6 @@
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 import torchvision.models as models
 import pytorch_lightning as pl
 from torchmetrics import Accuracy
@@ -53,8 +54,10 @@ class ResNet50Classifier(pl.LightningModule):
         preds = torch.argmax(outputs, dim=1)
         acc = self.train_acc(preds, labels)
 
-        self.log('train_loss', loss, on_step=True, on_epoch=True, prog_bar=True)
-        self.log('train_acc', acc, on_step=False, on_epoch=True, prog_bar=True)
+        # self.log('train_loss', loss, on_step=True, on_epoch=True, prog_bar=True)
+        self.log('loss/train', loss, on_step=True, on_epoch=True, prog_bar=True)
+        # self.log('train_acc', acc, on_step=False, on_epoch=True, prog_bar=True)
+        self.log('acc/train', acc, on_step=False, on_epoch=True, prog_bar=True)
 
         return loss
 
@@ -69,8 +72,10 @@ class ResNet50Classifier(pl.LightningModule):
         # print(f"Val - Outputs: {outputs}")
 
         acc = self.val_acc(preds, labels)
-        self.log('val_loss', loss, on_step=False, on_epoch=True, prog_bar=True)
-        self.log('val_acc', acc, on_step=False, on_epoch=True, prog_bar=True)
+        # self.log('val_loss', loss, on_step=False, on_epoch=True, prog_bar=True)
+        self.log('loss/val', loss, on_step=False, on_epoch=True, prog_bar=True)
+        # self.log('val_acc', acc, on_step=False, on_epoch=True, prog_bar=True)
+        self.log('acc/val', acc, on_step=False, on_epoch=True, prog_bar=True)
 
         return loss
     
@@ -83,13 +88,103 @@ class ResNet50Classifier(pl.LightningModule):
         preds = torch.argmax(outputs, dim=1)
         acc = self.test_acc(preds, labels)
 
-        self.log('test_loss', loss, on_step=False, on_epoch=True, prog_bar=True)
-        self.log('test_acc', acc, on_step=False, on_epoch=True, prog_bar=True)
+        # self.log('test_loss', loss, on_step=False, on_epoch=True, prog_bar=True)
+        self.log('loss/test', loss, on_step=False, on_epoch=True, prog_bar=True)
+        # self.log('test_acc', acc, on_step=False, on_epoch=True, prog_bar=True)
+        self.log('acc/test', acc, on_step=False, on_epoch=True, prog_bar=True)
 
         return loss
 
     def configure_optimizers(self):
         return self.optimizer
+
+
+class Scratch(pl.LightningModule):
+    def __init__(self, num_classes, learning_rate=1e-3):
+        super().__init__()
+        self.save_hyperparameters()
+        size = 128
+        self.conv1_1 = nn.Conv2d(3, size, 3, stride=1, padding=1)
+        self.conv1_2 = nn.Conv2d(size, size, 3, stride=1, padding=1)
+        self.conv1_3 = nn.Conv2d(size, size, 3, stride=1, padding=1)
+
+        self.conv2_1 = nn.Conv2d(size, size*2, 3, stride=1, padding=1)
+        self.conv2_2 = nn.Conv2d(size*2, size*2, 3, stride=1, padding=1)
+        self.conv2_3 = nn.Conv2d(size*2, size*2, 3, stride=1, padding=1)
+        
+        self.conv3 = nn.Conv2d(size*2, size*4, 3, stride=1, padding=1)
+        
+        self.pool  = nn.MaxPool2d(2, 2)
+
+        self.dropout1 = nn.Dropout(p = 0.3)
+        self.dropout2 = nn.Dropout(p = 0.3)
+        
+        # 32 -> 16 -> 8
+        self.fc1     = nn.Linear(size*4 * 16 * 16, size)
+        self.fc2     = nn.Linear(size, size)
+        self.fc3     = nn.Linear(size , num_classes)
+
+        self.accuracy = Accuracy(task="multiclass", num_classes=num_classes)
+        self.criterion = nn.CrossEntropyLoss()
+
+    def forward(self, x):
+        x = F.leaky_relu(self.conv1_1(x))
+        x = F.leaky_relu(self.conv1_2(x))
+        x = F.leaky_relu(self.conv1_3(x))
+
+        x = self.pool(x)
+        x = F.leaky_relu(self.conv2_1(x))
+        x = F.leaky_relu(self.conv2_2(x))
+        x = F.leaky_relu(self.conv2_3(x))
+
+        x = self.pool(x)
+        x = F.leaky_relu(self.conv3(x))
+        x = self.pool(x)
+
+        x = x.view(x.size(0), -1) # Flatten
+
+        x=F.leaky_relu(self.fc1(x))
+        x=self.dropout1(x)
+        x=F.leaky_relu(self.fc2(x))
+        x=self.dropout2(x)
+        x=self.fc3(x)
+        return x
+
+    def configure_optimizers(self):
+        return torch.optim.Adam(self.parameters(), lr=self.hparams.learning_rate)
+
+    def training_step(self, batch, batch_idx):
+        images, labels = batch
+        outputs = self(images)
+        loss = self.criterion(outputs, labels)
+        # self.log('train_loss', loss, on_step=True, on_epoch=True, prog_bar=True)
+        self.log('loss/train', loss, on_step=True, on_epoch=True, prog_bar=True)
+        self.accuracy(outputs, labels)
+        # self.log('train_acc', self.accuracy, on_step=True, on_epoch=True, prog_bar=True)
+        self.log('acc/train', self.accuracy, on_step=True, on_epoch=True, prog_bar=True)
+        return loss
+
+    def validation_step(self, batch, batch_idx):
+        images, labels = batch
+        outputs = self(images)
+        loss = self.criterion(outputs, labels)
+        # self.log('val_loss', loss, on_epoch=True, prog_bar=True)
+        self.log('loss/val', loss, on_epoch=True, prog_bar=True)
+        self.accuracy(outputs, labels)
+        # self.log('val_acc', self.accuracy, on_epoch=True, prog_bar=True)
+        self.log('acc/val', self.accuracy, on_epoch=True, prog_bar=True)
+        return loss
+
+    def test_step(self, batch, batch_idx):
+        images, labels = batch
+        outputs = self(images)
+        loss = self.criterion(outputs, labels)
+        # self.log('test_loss', loss, on_epoch=True, prog_bar=True)
+        self.log('loss/test', loss, on_epoch=True, prog_bar=True)
+        self.accuracy(outputs, labels)
+        # self.log('test_acc', self.accuracy, on_epoch=True, prog_bar=True)
+        self.log('acc/test', self.accuracy, on_epoch=True, prog_bar=True)
+        return loss
 
 if __name__ == "__main__":
     # Example usage

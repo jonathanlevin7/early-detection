@@ -3,12 +3,12 @@
 import argparse
 import os
 import pytorch_lightning as pl
-from pytorch_lightning.callbacks import ModelCheckpoint
+from pytorch_lightning.callbacks import ModelCheckpoint, EarlyStopping
 import yaml
 
 from src.data_handler.split_data import split_data
 from src.data_handler.dataloader import get_data_loaders
-from src.models.architectures import ResNet50Classifier  # Assuming you're using ResNet50Classifier
+from src.models.architectures import ResNet50Classifier, Scratch  # Assuming you're using ResNet50Classifier
 
 def load_config(config_path):
     """Loads configuration settings from a YAML file."""
@@ -29,6 +29,9 @@ def main(config):
     seed = config['data']['seed']
     epochs = config['training']['epochs']
 
+    arch = config['model']['architecture']
+    lr = config['training']['learning_rate']
+
     # # Split the data
     # split_data(original_data_dir,
     #            split_data_dir,
@@ -46,24 +49,34 @@ def main(config):
     train_loader, val_loader, test_loader, num_classes, _, _ = get_data_loaders(split_data_dir, crop_size, batch_size)
 
     # Load the Model
-    if config['model']['architecture'] == "resnet50":
-        model = ResNet50Classifier(num_classes=num_classes, learning_rate=config['training']['learning_rate'])
+    if arch == "resnet50":
+        model = ResNet50Classifier(num_classes=num_classes, learning_rate=lr)
+    elif arch == "scratch":
+        model = Scratch(num_classes=num_classes, learning_rate=lr)
     else:
-        raise ValueError(f"Invalid model architecture: {config['model']['architecture']}")
+        raise ValueError(f"Invalid model architecture: {arch}")
 
     # Checkpoint Callback
     checkpoint_callback = ModelCheckpoint(
-        monitor='val_loss',
+        monitor='loss/val',
         dirpath='./checkpoints',
-        filename='resnet50-{epoch:02d}-{val_loss:.2f}',
+        filename=f'{arch}-{{epoch:02d}}-{{loss/val:.2f}}',
         save_top_k=3,
         mode='min',
+    )
+
+    early_stop_callback = EarlyStopping(
+        monitor='loss/val',
+        min_delta=0.0001,
+        patience=5,
+        verbose=False,
+        mode='min'
     )
 
     # Trainer
     trainer = pl.Trainer(
         max_epochs=epochs,
-        callbacks=[checkpoint_callback],
+        callbacks=[checkpoint_callback, early_stop_callback],
         accelerator='auto',
         devices='auto'
     )
