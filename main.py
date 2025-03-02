@@ -32,6 +32,9 @@ def main(config):
     arch = config['model']['architecture']
     lr = config['training']['learning_rate']
 
+    early_stop_min_delta = config['training']['early_stopping']['min_delta']
+    early_stop_patience = config['training']['early_stopping']['patience']
+
     # # Split the data
     # split_data(original_data_dir,
     #            split_data_dir,
@@ -67,8 +70,8 @@ def main(config):
 
     early_stop_callback = EarlyStopping(
         monitor='loss/val',
-        min_delta=0.0001,
-        patience=5,
+        min_delta=early_stop_min_delta,
+        patience=early_stop_patience,
         verbose=False,
         mode='min'
     )
