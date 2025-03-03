@@ -5,6 +5,8 @@ import torchvision.models as models
 import pytorch_lightning as pl
 from torchmetrics import Accuracy
 import yaml
+import json
+import os
 
 config = yaml.safe_load(open("config.yaml"))
 
@@ -15,6 +17,7 @@ class ConvNeXtClassifier(pl.LightningModule):
         super().__init__()
         self.save_hyperparameters()
         self.learning_rate = learning_rate
+        self.misclassified_samples = []
 
         if pretrained:
             model = models.convnext_tiny(weights=models.ConvNeXt_Tiny_Weights.DEFAULT)
@@ -80,7 +83,39 @@ class ConvNeXtClassifier(pl.LightningModule):
         self.log('loss/test', loss, on_step=False, on_epoch=True, prog_bar=True)
         self.log('acc/test', acc, on_step=False, on_epoch=True, prog_bar=True)
 
+        # Store misclassified samples
+        misclassified_indices = torch.where(preds != labels)[0]
+        for idx in misclassified_indices:
+          image = inputs[idx].cpu().numpy().tolist() #convert to list to be json serializable
+          pred = preds[idx].item()
+          label = labels[idx].item()
+          self.misclassified_samples.append({
+              "image": image,
+              "prediction": pred,
+              "label": label,
+          })
+
         return loss
+    
+    def on_test_epoch_end(self):
+        # Construct the path to the outputs directory
+        current_dir = os.path.dirname(os.path.abspath(__file__))  # Get the directory of architectures.py
+        outputs_dir = os.path.join(current_dir, "..", "..", "outputs")  # Navigate to the outputs directory
+
+        # Ensure the output directory exists
+        if not os.path.exists(outputs_dir):
+            os.makedirs(outputs_dir)
+
+        # Construct the full path to the JSON file
+        json_path = os.path.join(outputs_dir, "misclassified_samples.json")
+
+        # Save misclassified samples to the JSON file
+        with open(json_path, "w") as f:
+            json.dump(self.misclassified_samples, f, indent=4)
+        
+        print(f"Misclassified samples saved to {json_path}")
+
+        self.misclassified_samples.clear()
 
     def configure_optimizers(self):
         return self.optimizer

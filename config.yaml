@@ -17,7 +17,7 @@ transforms:
 
 training:
   batch_size: 16
-  epochs: 100
+  epochs: 1
   learning_rate: 0.00025
   num_workers: 1
   early_stopping:
