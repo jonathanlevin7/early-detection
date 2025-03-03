@@ -10,6 +10,81 @@ config = yaml.safe_load(open("config.yaml"))
 
 pl.seed_everything(config['data']['seed'])
 
+class ConvNeXtClassifier(pl.LightningModule):
+    def __init__(self, num_classes, pretrained=True, learning_rate=1e-3):
+        super().__init__()
+        self.save_hyperparameters()
+        self.learning_rate = learning_rate
+
+        if pretrained:
+            model = models.convnext_tiny(weights=models.ConvNeXt_Tiny_Weights.DEFAULT)
+        else:
+            model = models.convnext_tiny(weights=None)
+
+        # Freeze all layers except the classifier
+        for param in model.parameters():
+            param.requires_grad = False
+
+        # Modify the classifier for multiclass output
+        num_ftrs = model.classifier[2].in_features
+        model.classifier[2] = nn.Linear(num_ftrs, num_classes)
+
+        # Unfreeze the classifier layers
+        for param in model.classifier.parameters():
+            param.requires_grad = True
+
+        self.model = model
+        self.criterion = nn.CrossEntropyLoss()
+        self.optimizer = torch.optim.Adam(self.model.classifier.parameters(), lr=self.hparams.learning_rate)
+
+        # Metrics
+        self.train_acc = Accuracy(task='multiclass', num_classes=num_classes)
+        self.val_acc = Accuracy(task='multiclass', num_classes=num_classes)
+        self.test_acc = Accuracy(task='multiclass', num_classes=num_classes)
+
+    def forward(self, x):
+        return self.model(x)
+
+    def training_step(self, batch, batch_idx):
+        inputs, labels = batch
+        outputs = self(inputs)
+        loss = self.criterion(outputs, labels)
+
+        preds = torch.argmax(outputs, dim=1)
+        acc = self.train_acc(preds, labels)
+
+        self.log('loss/train', loss, on_step=True, on_epoch=True, prog_bar=True)
+        self.log('acc/train', acc, on_step=False, on_epoch=True, prog_bar=True)
+
+        return loss
+
+    def validation_step(self, batch, batch_idx):
+        inputs, labels = batch
+        outputs = self(inputs)
+        loss = self.criterion(outputs, labels)
+        preds = torch.argmax(outputs, dim=1)
+        acc = self.val_acc(preds, labels)
+
+        self.log('loss/val', loss, on_step=False, on_epoch=True, prog_bar=True)
+        self.log('acc/val', acc, on_step=False, on_epoch=True, prog_bar=True)
+
+        return loss
+
+    def test_step(self, batch, batch_idx):
+        inputs, labels = batch
+        outputs = self(inputs)
+        loss = self.criterion(outputs, labels)
+        preds = torch.argmax(outputs, dim=1)
+        acc = self.test_acc(preds, labels)
+
+        self.log('loss/test', loss, on_step=False, on_epoch=True, prog_bar=True)
+        self.log('acc/test', acc, on_step=False, on_epoch=True, prog_bar=True)
+
+        return loss
+
+    def configure_optimizers(self):
+        return self.optimizer
+
 class ResNet50Classifier(pl.LightningModule):
     def __init__(self, num_classes, pretrained=True, learning_rate=1e-3):
         super().__init__()

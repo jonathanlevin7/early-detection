@@ -8,7 +8,7 @@ import yaml
 
 from src.data_handler.split_data import split_data
 from src.data_handler.dataloader import get_data_loaders
-from src.models.architectures import ResNet50Classifier, Scratch  # Assuming you're using ResNet50Classifier
+from src.models.architectures import ResNet50Classifier, Scratch, ConvNeXtClassifier  # Assuming you're using ResNet50Classifier
 
 def load_config(config_path):
     """Loads configuration settings from a YAML file."""
@@ -18,8 +18,13 @@ def load_config(config_path):
 def main(config):
     """Main function to run the aircraft detection pipeline."""
 
-    original_data_dir = config['data']['original_data_path']
-    split_data_dir = config['data']['split_data_path']
+    if config['data']['with_augmentation']:
+        original_data_dir = config['data']['original_data_path_aug']
+        split_data_dir = config['data']['split_data_path_aug']
+    else:
+        original_data_dir = config['data']['original_data_path']
+        split_data_dir = config['data']['split_data_path']
+
     crop_size = config['transforms']['crop_size']
     batch_size = config['training']['batch_size']
 
@@ -56,6 +61,8 @@ def main(config):
         model = ResNet50Classifier(num_classes=num_classes, learning_rate=lr)
     elif arch == "scratch":
         model = Scratch(num_classes=num_classes, learning_rate=lr)
+    elif arch == "convnext":
+        model = ConvNeXtClassifier(num_classes=num_classes, learning_rate=lr)
     else:
         raise ValueError(f"Invalid model architecture: {arch}")
 

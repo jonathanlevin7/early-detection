@@ -1,8 +1,12 @@
 data:
-  # original_data_path: "data/raw"  # Path to original data
+  with_augmentation: True
+
   original_data_path: "/projects/dsci410_510/Levin_MAED/data/raw"
-  # split_data_path: "data/split"  # Path to save processed data
   split_data_path: "/projects/dsci410_510/Levin_MAED/data/split"
+
+  original_data_path_aug: "/projects/dsci410_510/Levin_MAED/data/raw_aug"
+  split_data_path_aug: "/projects/dsci410_510/Levin_MAED/data/split_aug"
+
   train_split: 0.7
   val_split: 0.15
   test_split: 0.15
@@ -21,4 +25,4 @@ training:
     patience: 10
 
 model:
-  architecture: resnet50
+  architecture: convnext
