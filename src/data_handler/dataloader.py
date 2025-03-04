@@ -87,7 +87,18 @@ def get_data_loaders(split_data_dir, crop_size, batch_size, full_transform=True)
     if full_transform:
         mean, std = calculate_normalization_values(os.path.join(split_data_dir, 'train'), crop_size, batch_size)
 
-        final_transform = transforms.Compose([
+        # add mean and std to the config file
+        config_path = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "../../config.yaml"))
+        with open(config_path, 'r') as file:
+            config = yaml.safe_load(file)
+
+        config['transforms']['mean'] = mean.tolist()
+        config['transforms']['std'] = std.tolist()
+
+        with open(config_path, 'w') as file:
+            yaml.dump(config, file)
+
+        train_transform = transforms.Compose([
             # transforms.CenterCrop(crop_size),
             transforms.Resize(crop_size),
             transforms.CenterCrop(crop_size),
@@ -97,10 +108,39 @@ def get_data_loaders(split_data_dir, crop_size, batch_size, full_transform=True)
             transforms.ToTensor(),
             transforms.Normalize(mean=mean, std=std)  # Use calculated mean and std
         ])
+
+        val_transform = transforms.Compose([
+            transforms.Resize(crop_size),
+            transforms.CenterCrop(crop_size),
+            transforms.ToTensor(),
+            transforms.Normalize(mean=mean, std=std)  # Use calculated mean and std
+        ])
+
+        test_transform = transforms.Compose([
+            transforms.Resize(crop_size),
+            transforms.CenterCrop(crop_size),
+            transforms.ToTensor(),
+            transforms.Normalize(mean=mean, std=std)  # Use calculated mean and std
+        ])
     else:
         mean = torch.zeros(3)
         std = torch.ones(3)
-        final_transform = transforms.Compose([
+        
+        train_transform = transforms.Compose([
+            transforms.Resize(crop_size),
+            transforms.CenterCrop(crop_size),
+            transforms.ToTensor(),
+        # transforms.Normalize(mean=mean, std=std)  # Use calculated
+        ])
+
+        val_transform = transforms.Compose([
+            transforms.Resize(crop_size),
+            transforms.CenterCrop(crop_size),
+            transforms.ToTensor(),
+        # transforms.Normalize(mean=mean, std=std)  # Use calculated
+        ])
+
+        test_transform = transforms.Compose([
             transforms.Resize(crop_size),
             transforms.CenterCrop(crop_size),
             transforms.ToTensor(),
@@ -115,9 +155,9 @@ def get_data_loaders(split_data_dir, crop_size, batch_size, full_transform=True)
     print(f"Validation directory: {val_dir}") #added print statement
     print(f"Test directory: {test_dir}") #added print statement
 
-    train_dataset = AircraftDataset(train_dir, transform=final_transform)
-    val_dataset = AircraftDataset(val_dir, transform=final_transform)
-    test_dataset = AircraftDataset(test_dir, transform=final_transform)
+    train_dataset = AircraftDataset(train_dir, transform=train_transform)
+    val_dataset = AircraftDataset(val_dir, transform=val_transform)
+    test_dataset = AircraftDataset(test_dir, transform=test_transform)
 
     # config = yaml.safe_load(open("config.yaml"))
     config_path = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "../../config.yaml"))

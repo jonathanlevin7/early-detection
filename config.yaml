@@ -1,28 +1,30 @@
 data:
-  with_augmentation: True
-
-  original_data_path: "/projects/dsci410_510/Levin_MAED/data/raw"
-  split_data_path: "/projects/dsci410_510/Levin_MAED/data/split"
-
-  original_data_path_aug: "/projects/dsci410_510/Levin_MAED/data/raw_aug"
-  split_data_path_aug: "/projects/dsci410_510/Levin_MAED/data/split_aug"
-
+  original_data_path: /projects/dsci410_510/Levin_MAED/data/raw
+  original_data_path_aug: /projects/dsci410_510/Levin_MAED/data/raw_aug
+  seed: 42
+  split_data_path: /projects/dsci410_510/Levin_MAED/data/split
+  split_data_path_aug: /projects/dsci410_510/Levin_MAED/data/split_aug
+  test_split: 0.15
   train_split: 0.7
   val_split: 0.15
-  test_split: 0.15
-  seed: 42
-
-transforms:
-  crop_size: 128
-
+  with_augmentation: true
+model:
+  architecture: convnext
 training:
   batch_size: 16
-  epochs: 1
-  learning_rate: 0.00025
-  num_workers: 1
   early_stopping:
     min_delta: 0.0001
     patience: 10
-
-model:
-  architecture: convnext
+  epochs: 100
+  learning_rate: 0.00025
+  num_workers: 1
+transforms:
+  crop_size: 128
+  mean:
+  - 0.4654877483844757
+  - 0.47901803255081177
+  - 0.4970974922180176
+  std:
+  - 0.22246499359607697
+  - 0.2240286022424698
+  - 0.22887510061264038
