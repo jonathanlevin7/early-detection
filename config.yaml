@@ -11,20 +11,20 @@ data:
 model:
   architecture: convnext
 training:
-  batch_size: 16
+  batch_size: 32
   early_stopping:
     min_delta: 0.0001
     patience: 10
   epochs: 100
-  learning_rate: 0.00025
+  learning_rate: 0.00075
   num_workers: 1
 transforms:
-  crop_size: 128
+  crop_size: 256
   mean:
-  - 0.4654877483844757
-  - 0.47901803255081177
-  - 0.4970974922180176
+  - 0.46561306715011597
+  - 0.4791452884674072
+  - 0.497226744890213
   std:
-  - 0.22246499359607697
-  - 0.2240286022424698
-  - 0.22887510061264038
+  - 0.22463656961917877
+  - 0.2261684238910675
+  - 0.2309088110923767
