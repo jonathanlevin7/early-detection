@@ -8,6 +8,20 @@ data:
   train_split: 0.7
   val_split: 0.15
   with_augmentation: true
+image_degradation:
+  darken: false
+  darken_factor: 0.6
+  downscale: false
+  downscale_factor: 0.3
+  gaussian_blur: false
+  gaussian_blur_radius: 3
+  gaussian_noise: false
+  gaussian_noise_mean: 0
+  gaussian_noise_std: 1
+  haze: false
+  haze_alpha: 0.8
+  jpeg_compression: true
+  jpeg_compression_quality: 1
 model:
   architecture: convnext
 training:
@@ -21,10 +35,10 @@ training:
 transforms:
   crop_size: 256
   mean:
-  - 0.46561306715011597
-  - 0.4791452884674072
-  - 0.497226744890213
+  - 0.4656177759170532
+  - 0.47914525866508484
+  - 0.4972120523452759
   std:
-  - 0.22463656961917877
-  - 0.2261684238910675
-  - 0.2309088110923767
+  - 0.22458378970623016
+  - 0.22613878548145294
+  - 0.23085346817970276

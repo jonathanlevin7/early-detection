@@ -7,63 +7,47 @@ import pytorch_lightning as pl
 import argparse
 import yaml
 from torchvision.datasets import ImageFolder
+from sklearn.metrics import classification_report, accuracy_score
+import numpy as np
 
 def load_config(config_path):
     """Loads configuration settings from a YAML file."""
     with open(config_path, 'r') as file:
         return yaml.safe_load(file)
 
-def load_best_model(config, checkpoint_dir):
-    """Loads the best model based on the configuration."""
+def load_model_from_checkpoint(config, checkpoint_path, num_classes):
+    """Loads a model from a specified checkpoint path."""
     arch = config['model']['architecture']
-    num_classes = config['data']['num_classes']
 
-    # Find the best checkpoint file
-    best_checkpoint = None
-    best_val_loss = float('inf')
-
-    for filename in os.listdir(checkpoint_dir):
-        if filename.endswith(".ckpt") and arch in filename:
-            try:
-                val_loss = float(filename.split("loss/val=")[1].split(".ckpt")[0])
-                if val_loss < best_val_loss:
-                    best_val_loss = val_loss
-                    best_checkpoint = os.path.join(checkpoint_dir, filename)
-            except IndexError:
-                print(f"Warning: Could not extract validation loss from filename: {filename}")
-                continue
-
-    if best_checkpoint is None:
-        raise FileNotFoundError(f"No checkpoint file found for architecture '{arch}' in directory '{checkpoint_dir}'")
-
-    # Load the model
     if arch == "resnet50":
         from src.models.architectures import ResNet50Classifier
-        model = ResNet50Classifier.load_from_checkpoint(best_checkpoint, num_classes=num_classes)
+        model = ResNet50Classifier.load_from_checkpoint(checkpoint_path, num_classes=num_classes)
     elif arch == "scratch":
         from src.models.architectures import Scratch
-        model = Scratch.load_from_checkpoint(best_checkpoint, num_classes=num_classes)
+        model = Scratch.load_from_checkpoint(checkpoint_path, num_classes=num_classes)
     elif arch == "convnext":
         from src.models.architectures import ConvNeXtClassifier
-        model = ConvNeXtClassifier.load_from_checkpoint(best_checkpoint, num_classes=num_classes)
+        model = ConvNeXtClassifier.load_from_checkpoint(checkpoint_path, num_classes=num_classes)
     else:
         raise ValueError(f"Invalid model architecture: {arch}")
 
-    return model, best_checkpoint
+    return model
 
-def inference(config, image_dir, output_file):
-    """Runs inference on images in a directory using the best trained model."""
-
-    checkpoint_dir = "checkpoints"  # Directory where checkpoints are saved
-    model, checkpoint_path = load_best_model(config, checkpoint_dir)
-    print(f"Loaded best model from: {checkpoint_path}")
-
-    model.eval()
+def inference(config, image_dir, checkpoint_path):
+    """Runs inference on images in a directory using the specified checkpoint and returns metrics."""
 
     # 2. Load Data
     class InferenceDataset(Dataset):
         def __init__(self, image_dir, transform=None):
-            self.image_paths = [os.path.join(image_dir, f) for f in os.listdir(image_dir) if f.lower().endswith(('.png', '.jpg', '.jpeg'))]
+            self.image_paths = []
+            self.labels = []
+            for class_name in os.listdir(image_dir):
+                class_path = os.path.join(image_dir, class_name)
+                if os.path.isdir(class_path):
+                    for file_name in os.listdir(class_path):
+                        if file_name.lower().endswith(('.jpg', '.jpeg', '.png', '.ppm', '.bmp', '.pgm', '.tif', '.tiff', '.webp')):
+                            self.image_paths.append(os.path.join(class_path, file_name))
+                            self.labels.append(class_name)
             self.transform = transform
 
         def __len__(self):
@@ -74,8 +58,8 @@ def inference(config, image_dir, output_file):
             image = Image.open(image_path).convert('RGB')
             if self.transform:
                 image = self.transform(image)
-            return image, image_path
-    
+            return image, self.labels[idx]
+
     crop_size = config['transforms']['crop_size']
     mean = config['transforms']['mean']
     std = config['transforms']['std']
@@ -90,45 +74,47 @@ def inference(config, image_dir, output_file):
     dataset = InferenceDataset(image_dir, transform=inference_transform)
     dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=False)
 
+    # Calculate num_classes dynamically
+    dataset_for_classes = ImageFolder(image_dir)
+    class_names = dataset_for_classes.classes
+    num_classes = len(class_names)
+
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    model = load_model_from_checkpoint(config, checkpoint_path, num_classes).to(device)
+    print(f"Loaded model from: {checkpoint_path}")
+
+    model.eval()
+
     # 3. Run Inference
     predictions = []
-    image_paths = []
+    true_labels = []
 
     with torch.no_grad():
-        for images, paths in dataloader:
+        for images, labels in dataloader:
+            images = images.to(device)
             outputs = model(images)
             preds = torch.argmax(outputs, dim=1).cpu().numpy().tolist()
             predictions.extend(preds)
-            image_paths.extend(paths)
+            true_labels.extend(labels)
 
-    # 4. Process Predictions
-    dataset_for_classes = ImageFolder(image_dir)
-    class_names = dataset_for_classes.classes
+    # 4. Process Predictions and Evaluate
+    label_to_index = dataset_for_classes.class_to_idx
 
-    # Construct the path to the outputs directory
-    current_dir = os.path.dirname(os.path.abspath(__file__))
-    outputs_dir = os.path.join(current_dir, "..", "..", "outputs")
+    true_indices = [label_to_index[label] for label in true_labels]
 
-    # Ensure the output directory exists
-    if not os.path.exists(outputs_dir):
-        os.makedirs(outputs_dir)
+    report = classification_report(true_indices, predictions, target_names=class_names)
+    accuracy = accuracy_score(true_indices, predictions)
 
-    # Construct the full path to the output file
-    output_filepath = os.path.join(outputs_dir, output_file)
-
-    with open(output_filepath, 'w') as f:
-        for path, pred in zip(image_paths, predictions):
-            class_name = class_names[pred]
-            f.write(f"{path}: {class_name}\n")
-    print(f"Predictions saved to {output_filepath}")
+    print(f"Accuracy: {accuracy}")
+    print("Classification Report:\n", report)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Military Aircraft Early Detection Inference")
     parser.add_argument("--config", type=str, default="config.yaml", help="Path to configuration file")
+    # parser.add_argument("--checkpoint", type=str, required=True, help="Path to checkpoint file")
     args = parser.parse_args()
     config = load_config(args.config)
 
-    image_directory = "path/to/your/inference_images"  # Replace with your image directory
-    output_filename = "inference_results.txt"  # Replace with your desired output filename
-
-    inference(config, image_directory, output_filename)
+    image_directory = "/projects/dsci410_510/Levin_MAED/data/test_degraded"
+    checkpoint_path = "./checkpoints/convnext-epoch=40-loss/val=0.21.ckpt"
+    inference(config, image_directory, checkpoint_path)

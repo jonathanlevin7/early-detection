@@ -71,6 +71,7 @@ def main(config):
         monitor='loss/val',
         dirpath='./checkpoints',
         filename=f'{arch}-{{epoch:02d}}-{{loss/val:.2f}}',
+        # filename=f'{arch}' + '-{epoch:02d}-{loss/val:.2f}',
         save_top_k=3,
         mode='min',
     )
