@@ -9,16 +9,17 @@ import yaml
 from torchvision.datasets import ImageFolder
 from sklearn.metrics import classification_report, accuracy_score
 import numpy as np
+import matplotlib.pyplot as plt
+import json
+
+from src.data_handler.simulate_degrade import process_dataset, simulate_distant_view
 
 def load_config(config_path):
-    """Loads configuration settings from a YAML file."""
     with open(config_path, 'r') as file:
         return yaml.safe_load(file)
 
 def load_model_from_checkpoint(config, checkpoint_path, num_classes):
-    """Loads a model from a specified checkpoint path."""
     arch = config['model']['architecture']
-
     if arch == "resnet50":
         from src.models.architectures import ResNet50Classifier
         model = ResNet50Classifier.load_from_checkpoint(checkpoint_path, num_classes=num_classes)
@@ -30,13 +31,9 @@ def load_model_from_checkpoint(config, checkpoint_path, num_classes):
         model = ConvNeXtClassifier.load_from_checkpoint(checkpoint_path, num_classes=num_classes)
     else:
         raise ValueError(f"Invalid model architecture: {arch}")
-
     return model
 
 def inference(config, image_dir, checkpoint_path):
-    """Runs inference on images in a directory using the specified checkpoint and returns metrics."""
-
-    # 2. Load Data
     class InferenceDataset(Dataset):
         def __init__(self, image_dir, transform=None):
             self.image_paths = []
@@ -69,12 +66,11 @@ def inference(config, image_dir, checkpoint_path):
             transforms.Resize(crop_size),
             transforms.CenterCrop(crop_size),
             transforms.ToTensor(),
-            transforms.Normalize(mean=mean, std=std)  # Use calculated mean and std
+            transforms.Normalize(mean=mean, std=std)
         ])
     dataset = InferenceDataset(image_dir, transform=inference_transform)
     dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=False)
 
-    # Calculate num_classes dynamically
     dataset_for_classes = ImageFolder(image_dir)
     class_names = dataset_for_classes.classes
     num_classes = len(class_names)
@@ -85,7 +81,6 @@ def inference(config, image_dir, checkpoint_path):
 
     model.eval()
 
-    # 3. Run Inference
     predictions = []
     true_labels = []
 
@@ -97,24 +92,58 @@ def inference(config, image_dir, checkpoint_path):
             predictions.extend(preds)
             true_labels.extend(labels)
 
-    # 4. Process Predictions and Evaluate
     label_to_index = dataset_for_classes.class_to_idx
-
     true_indices = [label_to_index[label] for label in true_labels]
 
-    report = classification_report(true_indices, predictions, target_names=class_names)
+    report = classification_report(true_indices, predictions, target_names=class_names, output_dict=True)
     accuracy = accuracy_score(true_indices, predictions)
 
     print(f"Accuracy: {accuracy}")
     print("Classification Report:\n", report)
 
+    return accuracy, report
+
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Military Aircraft Early Detection Inference")
+    parser = argparse.ArgumentParser(description="Experiment with image degradation effects and inference")
     parser.add_argument("--config", type=str, default="config.yaml", help="Path to configuration file")
-    # parser.add_argument("--checkpoint", type=str, required=True, help="Path to checkpoint file")
+    parser.add_argument("--effect", type=str, required=True, help="Effect to apply (see config.yaml)")
+    parser.add_argument("--start", type=float, required=True, help="Start value of the effect parameter")
+    parser.add_argument("--stop", type=float, required=True, help="Stop value of the effect parameter")
+    parser.add_argument("--step", type=float, required=True, help="Step size for the effect parameter")
+    parser.add_argument("--input_dir", type=str, required=True, help="Directory containing original images")
+    parser.add_argument("--output_dir", type=str, required=True, help="Directory to save degraded images")
+    parser.add_argument("--checkpoint", type=str, required=True, help="Path to model checkpoint")
     args = parser.parse_args()
+
     config = load_config(args.config)
 
-    image_directory = "/projects/dsci410_510/Levin_MAED/data/test_degraded"
-    checkpoint_path = "./checkpoints/convnext-epoch=40-loss/val=0.21.ckpt"
-    inference(config, image_directory, checkpoint_path)
+    results = []
+
+    for param in np.arange(args.start, args.stop + args.step, args.step):
+        print(f"Applying {args.effect} with parameter {param}")
+        param_config = config["image_degradation"].copy()
+        param_config[args.effect] = True
+        param_config[f"{args.effect}_factor"] = param
+        param_config[f"{args.effect}_radius"] = param
+        param_config[f"{args.effect}_quality"] = param
+        param_config[f"{args.effect}_mean"] = param
+        param_config[f"{args.effect}_std"] = param
+        param_config[f"{args.effect}_alpha"] = param
+
+        param_output_dir = os.path.join(args.output_dir, str(param))
+        process_dataset(args.input_dir, param_output_dir, param_config)
+        accuracy, report = inference(config, param_output_dir, args.checkpoint)
+        results.append({"parameter": param, "accuracy": accuracy, "report": report})
+
+    parameters = [result["parameter"] for result in results]
+    accuracies = [result["accuracy"] for result in results]
+
+    plt.plot(parameters, accuracies, marker='o')
+    plt.xlabel(f"{args.effect} Parameter")
+    plt.ylabel("Accuracy")
+    plt.title(f"Accuracy vs. {args.effect} Parameter")
+    plt.grid(True)
+    plt.show()
+
+    with open("outputs/inference_results.json", "w") as f:
+        json.dump(results, f, indent=4)
