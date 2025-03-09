@@ -97,9 +97,12 @@ def process_dataset(input_path, output_path, config):
         os.makedirs(class_output_dir, exist_ok=True)
 
         # Process each image in the class directory
+        image_name_to_return = None
         for image_name in tqdm(os.listdir(class_input_dir), desc=f"Processing {class_name}"):
             input_image_path = os.path.join(class_input_dir, image_name)
             output_image_path = os.path.join(class_output_dir, image_name)
+            if image_name_to_return is None:
+                image_name_to_return = output_image_path
 
             # Validate image file extension
             if not any(image_name.lower().endswith(ext) for ext in VALID_EXTENSIONS):
@@ -119,3 +122,5 @@ def process_dataset(input_path, output_path, config):
             transformed_image.save(output_image_path)
 
     print("Processing complete! Transformed images saved.")
+
+    return image_name_to_return

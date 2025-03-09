@@ -20,7 +20,7 @@ image_degradation:
   gaussian_noise_std: 1
   haze: false
   haze_alpha: 0.8
-  jpeg_compression: true
+  jpeg_compression: false
   jpeg_compression_quality: 1
 model:
   architecture: convnext

@@ -9,8 +9,8 @@ import yaml
 from torchvision.datasets import ImageFolder
 from sklearn.metrics import classification_report, accuracy_score
 import numpy as np
-import matplotlib.pyplot as plt
 import json
+import shutil
 
 from src.data_handler.simulate_degrade import process_dataset, simulate_distant_view
 
@@ -113,6 +113,9 @@ if __name__ == "__main__":
     parser.add_argument("--input_dir", type=str, required=True, help="Directory containing original images")
     parser.add_argument("--output_dir", type=str, required=True, help="Directory to save degraded images")
     parser.add_argument("--checkpoint", type=str, required=True, help="Path to model checkpoint")
+    parser.add_argument("--parameter_name", type=str, required=True, help="Name of the parameter being varied")
+    parser.add_argument("--gaussian_noise_mean", type=float, help="Mean for Gaussian noise (optional)")
+    parser.add_argument("--gaussian_noise_std", type=float, help="Std for Gaussian noise (optional)")
     args = parser.parse_args()
 
     config = load_config(args.config)
@@ -123,27 +126,40 @@ if __name__ == "__main__":
         print(f"Applying {args.effect} with parameter {param}")
         param_config = config["image_degradation"].copy()
         param_config[args.effect] = True
-        param_config[f"{args.effect}_factor"] = param
-        param_config[f"{args.effect}_radius"] = param
-        param_config[f"{args.effect}_quality"] = param
-        param_config[f"{args.effect}_mean"] = param
-        param_config[f"{args.effect}_std"] = param
-        param_config[f"{args.effect}_alpha"] = param
+
+        # Handle gaussian_noise specifically
+        if args.effect == "gaussian_noise":
+            if args.gaussian_noise_mean is not None:
+                param_config["gaussian_noise_mean"] = args.gaussian_noise_mean
+            else:
+                param_config["gaussian_noise_mean"] = config["image_degradation"].get("gaussian_noise_mean", 0)
+
+            if args.gaussian_noise_std is not None:
+                param_config["gaussian_noise_std"] = args.gaussian_noise_std
+            else:
+                param_config["gaussian_noise_std"] = config["image_degradation"].get("gaussian_noise_std", 1)
+
+            param_config["gaussian_noise_std"] = param
+
+        else:
+            # Handle other effects as before
+            param_config[f"{args.effect}_factor"] = param
+            param_config[f"{args.effect}_radius"] = param
+            param_config[f"{args.effect}_quality"] = param
+            param_config[f"{args.effect}_alpha"] = param
 
         param_output_dir = os.path.join(args.output_dir, str(param))
-        process_dataset(args.input_dir, param_output_dir, param_config)
+        image_name = process_dataset(args.input_dir, param_output_dir, param_config)
         accuracy, report = inference(config, param_output_dir, args.checkpoint)
-        results.append({"parameter": param, "accuracy": accuracy, "report": report})
+        result_img_name = os.path.join('outputs', os.path.basename(image_name)+f"_degraded_{args.effect}_{param}.jpg")
+        shutil.copyfile(image_name, result_img_name)
+        results.append({"parameter": param, "accuracy": accuracy, "report": report, "image_name": result_img_name})
+        try:
+            shutil.rmtree(param_output_dir)
+        except:
+            print(f"\n\nWarning: Unable to delete {param_output_dir}")
 
-    parameters = [result["parameter"] for result in results]
-    accuracies = [result["accuracy"] for result in results]
-
-    plt.plot(parameters, accuracies, marker='o')
-    plt.xlabel(f"{args.effect} Parameter")
-    plt.ylabel("Accuracy")
-    plt.title(f"Accuracy vs. {args.effect} Parameter")
-    plt.grid(True)
-    plt.show()
+    results_to_save = {"parameter_name": args.parameter_name, "results": results}
 
     with open("outputs/inference_results.json", "w") as f:
-        json.dump(results, f, indent=4)
+        json.dump(results_to_save, f, indent=4)
