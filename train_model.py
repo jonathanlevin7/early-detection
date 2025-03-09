@@ -11,11 +11,6 @@ from torchmetrics.classification import MulticlassConfusionMatrix, MulticlassPre
 import json
 from sklearn.metrics import classification_report
 
-# def load_config(config_path):
-#     """Loads the configuration from a YAML file."""
-#     with open(config_path, 'r') as file:
-#         return yaml.safe_load(file)
-
 def save_confusion_matrix(conf_matrix, class_names, output_dir='outputs'):
     """Saves the confusion matrix as a JSON file."""
     output_dir = str(output_dir)  # Ensure output_dir is a string
@@ -82,7 +77,6 @@ def train_model(config):
     Args:
         config: configuration.
     """
-    # config = load_config(config)
 
     # Seed
     seed = config['data']['seed']
@@ -90,13 +84,10 @@ def train_model(config):
 
     # Data Loading
     if config['data']['with_augmentation']:
-        # original_data_dir = config['data']['original_data_path_aug']
         data_dir = config['data']['split_data_path_aug']
     else:
-        # original_data_dir = config['data']['original_data_path']
         data_dir = config['data']['split_data_path']
     
-    # data_dir = config['data']['split_data_path']
     crop_size = config['transforms']['crop_size']
     batch_size = config['training']['batch_size']
 
@@ -114,28 +105,6 @@ def train_model(config):
     early_stop_min_delta = config['training']['early_stopping']['min_delta']
     early_stop_patience = config['training']['early_stopping']['patience']
 
-    # if architecture == "resnet50":
-    #     model = ResNet50Classifier(num_classes=num_classes, learning_rate=learning_rate)
-    # else:
-    #     raise ValueError(f"Unsupported architecture: {architecture}")
-
-    # # Checkpoint Callback
-    # os.makedirs('./checkpoints', exist_ok=True) # Ensure Checkpoint directory exists.
-    # checkpoint_callback = ModelCheckpoint(
-    #     monitor='val_loss',
-    #     dirpath='./checkpoints',
-    #     filename='resnet50-{epoch:02d}-{val_loss:.2f}',
-    #     save_top_k=3,
-    #     mode='min',
-    # )
-
-    # # Trainer
-    # trainer = pl.Trainer(
-    #     max_epochs=epochs,
-    #     callbacks=[checkpoint_callback],
-    #     accelerator='auto',
-    #     devices='auto',
-    # )
     # Load the Model
     if arch == "resnet50":
         model = ResNet50Classifier(num_classes=num_classes, learning_rate=lr)
@@ -151,7 +120,6 @@ def train_model(config):
         monitor='loss/val',
         dirpath='./checkpoints',
         filename=f'{arch}-{{epoch:02d}}-{{loss/val:.2f}}',
-        # filename=f'{arch}' + '-{epoch:02d}-{loss/val:.2f}',
         save_top_k=3,
         mode='min',
     )
@@ -174,13 +142,17 @@ def train_model(config):
 
     # Training and Testing
     trainer.fit(model, train_loader, val_loader)
-    trainer.test(model, test_loader)
+    # trainer.test(model, test_loader)
+    test_results = trainer.test(model, test_loader) # capture test results
+    test_accuracy = test_results[0]['test_acc'] # extract test accuracy
 
     # Save confusion matrix data
     calculate_confusion_matrix(model, test_loader, num_classes) # Corrected function call
 
     # Calculate and print classification report
     calculate_classification_report(model, test_loader, num_classes)
+
+    return test_accuracy
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Train a model.")
