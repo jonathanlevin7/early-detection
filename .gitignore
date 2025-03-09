@@ -9,3 +9,4 @@ notebooks/.ipynb_checkpoints/
 MAED
 check_cuda.py
 outputs/
+test.py

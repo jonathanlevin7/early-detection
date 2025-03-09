@@ -24,6 +24,7 @@ image_degradation:
   jpeg_compression_quality: 1
 model:
   architecture: convnext
+  checkpoint_path: ./checkpoints/convnext-epoch=40-loss/val=0.21.ckpt
 training:
   batch_size: 32
   early_stopping:

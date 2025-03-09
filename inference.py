@@ -18,19 +18,18 @@ def load_config(config_path):
     with open(config_path, 'r') as file:
         return yaml.safe_load(file)
 
-def load_model_from_checkpoint(config, checkpoint_path, num_classes):
-    arch = config['model']['architecture']
-    if arch == "resnet50":
+def load_model_from_checkpoint(checkpoint_path, num_classes):
+    if str(checkpoint_path[14:]).startswith("resnet50"):
         from src.models.architectures import ResNet50Classifier
         model = ResNet50Classifier.load_from_checkpoint(checkpoint_path, num_classes=num_classes)
-    elif arch == "scratch":
+    elif str(checkpoint_path[14:]).startswith("scratch"):
         from src.models.architectures import Scratch
         model = Scratch.load_from_checkpoint(checkpoint_path, num_classes=num_classes)
-    elif arch == "convnext":
+    elif str(checkpoint_path[14:]).startswith("convnext"):
         from src.models.architectures import ConvNeXtClassifier
         model = ConvNeXtClassifier.load_from_checkpoint(checkpoint_path, num_classes=num_classes)
     else:
-        raise ValueError(f"Invalid model architecture: {arch}")
+        raise ValueError(f"Invalid model architecture")
     return model
 
 def inference(config, image_dir, checkpoint_path):
@@ -76,7 +75,7 @@ def inference(config, image_dir, checkpoint_path):
     num_classes = len(class_names)
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    model = load_model_from_checkpoint(config, checkpoint_path, num_classes).to(device)
+    model = load_model_from_checkpoint(checkpoint_path, num_classes).to(device)
     print(f"Loaded model from: {checkpoint_path}")
 
     model.eval()
@@ -112,7 +111,6 @@ if __name__ == "__main__":
     parser.add_argument("--step", type=float, required=True, help="Step size for the effect parameter")
     parser.add_argument("--input_dir", type=str, required=True, help="Directory containing original images")
     parser.add_argument("--output_dir", type=str, required=True, help="Directory to save degraded images")
-    parser.add_argument("--checkpoint", type=str, required=True, help="Path to model checkpoint")
     parser.add_argument("--parameter_name", type=str, required=True, help="Name of the parameter being varied")
     parser.add_argument("--gaussian_noise_mean", type=float, help="Mean for Gaussian noise (optional)")
     parser.add_argument("--gaussian_noise_std", type=float, help="Std for Gaussian noise (optional)")
@@ -150,7 +148,7 @@ if __name__ == "__main__":
 
         param_output_dir = os.path.join(args.output_dir, str(param))
         image_name = process_dataset(args.input_dir, param_output_dir, param_config)
-        accuracy, report = inference(config, param_output_dir, args.checkpoint)
+        accuracy, report = inference(config, param_output_dir, config['model']['checkpoint_path'])
         result_img_name = os.path.join('outputs', os.path.basename(image_name)+f"_degraded_{args.effect}_{param}.jpg")
         shutil.copyfile(image_name, result_img_name)
         results.append({"parameter": param, "accuracy": accuracy, "report": report, "image_name": result_img_name})

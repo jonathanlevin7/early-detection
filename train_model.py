@@ -1,7 +1,8 @@
 import torch
 import pytorch_lightning as pl
 from pytorch_lightning.callbacks import ModelCheckpoint
-from src.models.architectures import ResNet50Classifier
+from src.models.architectures import ResNet50Classifier, Scratch, ConvNeXtClassifier
+from pytorch_lightning.callbacks import ModelCheckpoint, EarlyStopping
 from src.data_handler.dataloader import get_data_loaders
 import yaml
 import os
@@ -10,10 +11,10 @@ from torchmetrics.classification import MulticlassConfusionMatrix, MulticlassPre
 import json
 from sklearn.metrics import classification_report
 
-def load_config(config_path):
-    """Loads the configuration from a YAML file."""
-    with open(config_path, 'r') as file:
-        return yaml.safe_load(file)
+# def load_config(config_path):
+#     """Loads the configuration from a YAML file."""
+#     with open(config_path, 'r') as file:
+#         return yaml.safe_load(file)
 
 def save_confusion_matrix(conf_matrix, class_names, output_dir='outputs'):
     """Saves the confusion matrix as a JSON file."""
@@ -74,21 +75,28 @@ def calculate_classification_report(model, test_loader, num_classes):
     report = classification_report(all_labels, all_preds, target_names=[str(i) for i in range(num_classes)])
     print("Classification Report:\n", report)
 
-def train_model(config_path):
+def train_model(config):
     """
     Trains a model using the configuration from a YAML file.
 
     Args:
-        config_path (str): Path to the configuration YAML file.
+        config: configuration.
     """
-    config = load_config(config_path)
+    # config = load_config(config)
 
     # Seed
     seed = config['data']['seed']
     pl.seed_everything(seed)
 
     # Data Loading
-    data_dir = config['data']['split_data_path']
+    if config['data']['with_augmentation']:
+        # original_data_dir = config['data']['original_data_path_aug']
+        data_dir = config['data']['split_data_path_aug']
+    else:
+        # original_data_dir = config['data']['original_data_path']
+        data_dir = config['data']['split_data_path']
+    
+    # data_dir = config['data']['split_data_path']
     crop_size = config['transforms']['crop_size']
     batch_size = config['training']['batch_size']
 
@@ -99,31 +107,69 @@ def train_model(config_path):
     print(f"Number of classes: {num_classes}")
 
     # Model Initialization
-    learning_rate = config['training']['learning_rate']
     epochs = config['training']['epochs']
-    architecture = config['model']['architecture']
+    arch = config['model']['architecture']
+    lr = config['training']['learning_rate']
 
-    if architecture == "resnet50":
-        model = ResNet50Classifier(num_classes=num_classes, learning_rate=learning_rate)
+    early_stop_min_delta = config['training']['early_stopping']['min_delta']
+    early_stop_patience = config['training']['early_stopping']['patience']
+
+    # if architecture == "resnet50":
+    #     model = ResNet50Classifier(num_classes=num_classes, learning_rate=learning_rate)
+    # else:
+    #     raise ValueError(f"Unsupported architecture: {architecture}")
+
+    # # Checkpoint Callback
+    # os.makedirs('./checkpoints', exist_ok=True) # Ensure Checkpoint directory exists.
+    # checkpoint_callback = ModelCheckpoint(
+    #     monitor='val_loss',
+    #     dirpath='./checkpoints',
+    #     filename='resnet50-{epoch:02d}-{val_loss:.2f}',
+    #     save_top_k=3,
+    #     mode='min',
+    # )
+
+    # # Trainer
+    # trainer = pl.Trainer(
+    #     max_epochs=epochs,
+    #     callbacks=[checkpoint_callback],
+    #     accelerator='auto',
+    #     devices='auto',
+    # )
+    # Load the Model
+    if arch == "resnet50":
+        model = ResNet50Classifier(num_classes=num_classes, learning_rate=lr)
+    elif arch == "scratch":
+        model = Scratch(num_classes=num_classes, learning_rate=lr)
+    elif arch == "convnext":
+        model = ConvNeXtClassifier(num_classes=num_classes, learning_rate=lr)
     else:
-        raise ValueError(f"Unsupported architecture: {architecture}")
+        raise ValueError(f"Invalid model architecture: {arch}")
 
     # Checkpoint Callback
-    os.makedirs('./checkpoints', exist_ok=True) # Ensure Checkpoint directory exists.
     checkpoint_callback = ModelCheckpoint(
-        monitor='val_loss',
+        monitor='loss/val',
         dirpath='./checkpoints',
-        filename='resnet50-{epoch:02d}-{val_loss:.2f}',
+        filename=f'{arch}-{{epoch:02d}}-{{loss/val:.2f}}',
+        # filename=f'{arch}' + '-{epoch:02d}-{loss/val:.2f}',
         save_top_k=3,
         mode='min',
+    )
+
+    early_stop_callback = EarlyStopping(
+        monitor='loss/val',
+        min_delta=early_stop_min_delta,
+        patience=early_stop_patience,
+        verbose=False,
+        mode='min'
     )
 
     # Trainer
     trainer = pl.Trainer(
         max_epochs=epochs,
-        callbacks=[checkpoint_callback],
+        callbacks=[checkpoint_callback, early_stop_callback],
         accelerator='auto',
-        devices='auto',
+        devices='auto'
     )
 
     # Training and Testing
