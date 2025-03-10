@@ -8,5 +8,6 @@ assets/.ipynb_checkpoints/
 notebooks/.ipynb_checkpoints/
 MAED
 check_cuda.py
-outputs/
+outputs/*
+!outputs/confusion_matrix.json
 test.py
