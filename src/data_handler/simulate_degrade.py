@@ -101,7 +101,7 @@ def process_dataset(input_path, output_path, config):
         for image_name in tqdm(os.listdir(class_input_dir), desc=f"Processing {class_name}"):
             input_image_path = os.path.join(class_input_dir, image_name)
             output_image_path = os.path.join(class_output_dir, image_name)
-            if image_name_to_return is None:
+            if image_name_to_return is None and not image_name.startswith(('bw_', 'flipped_', 'v_flipped_', 'rotated_')):
                 image_name_to_return = output_image_path
 
             # Validate image file extension

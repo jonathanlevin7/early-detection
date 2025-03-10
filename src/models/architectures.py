@@ -299,7 +299,7 @@ class Scratch(pl.LightningModule):
 if __name__ == "__main__":
     # Example usage
     num_classes = 2
-    model = ResNet50Classifier(num_classes)
+    model = ConvNeXtClassifier(num_classes)
     print(model)
 
     # Test forward pass with dummy input

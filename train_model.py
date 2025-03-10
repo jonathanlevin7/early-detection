@@ -46,7 +46,7 @@ def calculate_confusion_matrix(model, test_loader, num_classes):
     all_labels = torch.cat(all_labels)
     
     conf_matrix.update(all_preds, all_labels)
-    save_confusion_matrix(conf_matrix.compute(), [str(i) for i in range(num_classes)])
+    save_confusion_matrix(conf_matrix.compute(), test_loader.dataset.classes)
 
 def calculate_classification_report(model, test_loader, num_classes):
     """Calculates and prints the classification report."""
@@ -67,8 +67,14 @@ def calculate_classification_report(model, test_loader, num_classes):
     all_preds = torch.cat(all_preds).numpy()
     all_labels = torch.cat(all_labels).numpy()
 
-    report = classification_report(all_labels, all_preds, target_names=[str(i) for i in range(num_classes)])
+    # report = classification_report(all_labels, all_preds, target_names=[str(i) for i in range(num_classes)])
+    report = classification_report(all_labels, all_preds, target_names=test_loader.dataset.classes)
     print("Classification Report:\n", report)
+
+    # save classification report to a file with model name
+    with open(f"outputs/classification_report.txt", "w") as f:
+        f.write(report)
+    print(f"Classification report saved to outputs/classification_report.txt")
 
 def train_model(config):
     """
@@ -144,7 +150,7 @@ def train_model(config):
     trainer.fit(model, train_loader, val_loader)
     # trainer.test(model, test_loader)
     test_results = trainer.test(model, test_loader) # capture test results
-    test_accuracy = test_results[0]['test_acc'] # extract test accuracy
+    test_accuracy = test_results[0]['acc/test'] # extract test accuracy
 
     # Save confusion matrix data
     calculate_confusion_matrix(model, test_loader, num_classes) # Corrected function call
