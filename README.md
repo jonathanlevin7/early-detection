@@ -66,6 +66,11 @@ Below are a few examples of how accurate the model is at evaluating the same tes
 srun python inference.py --config config.yaml --effect jpeg_compression --start 1 --stop 81 --step 20 --input_dir /projects/dsci410_510/Levin_MAED/data/split_aug/test --output_dir /projects/dsci410_510/Levin_MAED/data/test_degraded2 --parameter_name "JPEG Compression Quality"
 ```
 
+![Accuracy vs. JPEG Compression Quality](assets/acc_effect_graphs/jpeg_compression_quality_1.0_21.0_11_0.8934.png)
+```bash
+srun python inference.py --config config.yaml --effect jpeg_compression --start 1 --stop 21 --step 2 --input_dir /projects/dsci410_510/Levin_MAED/data/split_aug/test --output_dir /projects/dsci410_510/Levin_MAED/data/test_degraded2 --parameter_name "JPEG Compression Quality"
+```
+
 ![Accuracy vs. Gaussian Blur](assets/acc_effect_graphs/gaussian_blur_1.0_5.0_5_0.8934.png)
 ```bash
 srun python inference.py --config config.yaml --effect gaussian_blur --start 1 --stop 5 --step 1 --input_dir /projects/dsci410_510/Levin_MAED/data/split_aug/test --output_dir /projects/dsci410_510/Levin_MAED/data/test_degraded2 --parameter_name "Gaussian Blur"
