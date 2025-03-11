@@ -38,7 +38,7 @@ Specifically for the degradation tests, a more robust evaluation is necessary to
 
 An `--effect` is specified, along with a `--start`, `--stop`, and `--step` to dictate by how much to alter the effect (e.g., JPEG compression quality, Gaussian blur radius, etc.). This, then, automatically creates the degraded test set, evaluates it using the model loaded with a checkpoint (specified in [config.yaml](config.yaml)), saves the evaluation metrics to a separate JSON file in './outputs', and deletes the degraded test set (no longer needed since we only need the evaluation metrics for these intermediate results). This process happens for every `--step` between `--start` and `--stop`. To visualize how a degradation effect affects the model's evaluation metrics at each `--step`, [notebooks/inference_results.ipynb](notebooks/inference_results.ipynb) produces a plot like this:
 
-![Accuracy vs. JPEG Compression Quality](assets/jpeg_compression_quality_1.0_81.0_5_0.8934.png)
+![Accuracy vs. JPEG Compression Quality](assets/acc_effect_graphs/jpeg_compression_quality_1.0_81.0_5_0.8934.png)
 
 At this time, the ConvNeXt implementation for this project by default supports the storing of misclassified samples. To view or analyze these misclassified samples, see [notebooks/view_misclassified.ipynb](notebooks/view_misclassified.ipynb).
 
@@ -61,14 +61,24 @@ Of course, model performance on non-degraded images was only half the battle; th
 
 Below are a few examples of how accurate the model is at evaluating the same test set with different degradation techniques and strengths:
 
-![Accuracy vs. JPEG Compression Quality](assets/jpeg_compression_quality_1.0_81.0_5_0.8934.png)
+![Accuracy vs. JPEG Compression Quality](assets/acc_effect_graphs/jpeg_compression_quality_1.0_81.0_5_0.8934.png)
 ```bash
 srun python inference.py --config config.yaml --effect jpeg_compression --start 1 --stop 81 --step 20 --input_dir /projects/dsci410_510/Levin_MAED/data/split_aug/test --output_dir /projects/dsci410_510/Levin_MAED/data/test_degraded2 --parameter_name "JPEG Compression Quality"
 ```
 
-![Accuracy vs. Gaussian Blur](assets/gaussian_blur_1.0_5.0_5_0.8934.png)
+![Accuracy vs. Gaussian Blur](assets/acc_effect_graphs/gaussian_blur_1.0_5.0_5_0.8934.png)
 ```bash
 srun python inference.py --config config.yaml --effect gaussian_blur --start 1 --stop 5 --step 1 --input_dir /projects/dsci410_510/Levin_MAED/data/split_aug/test --output_dir /projects/dsci410_510/Levin_MAED/data/test_degraded2 --parameter_name "Gaussian Blur"
+```
+
+![Accuracy vs. Gaussian Noise (Mean = [0, 100], Std = 1)](assets/acc_effect_graphs/gaussian_noise_(mean_=_[0,_100],_std_=_1)__0.0_100.0_11_0.8934.png)
+```bash
+srun python inference.py --config config.yaml --effect gaussian_noise --start 0 --stop 100 --step 10 --input_dir /projects/dsci410_510/Levin_MAED/data/split_aug/test --output_dir /projects/dsci410_510/Levin_MAED/data/test_degraded2  --parameter_name "Gaussian Noise (Mean = [0, 100], Std = 1)" --gaussian_noise_std 1
+```
+
+![Accuracy vs. Gaussian Noise (Mean = 2, Std = [0, 50])](assets/acc_effect_graphs/gaussian_noise_(mean_=_2,_std_=_[0,_50])__0.0_50.0_6_0.8934.png)
+```bash
+srun python inference.py --config config.yaml --effect gaussian_noise --start 0 --stop 50 --step 10 --input_dir /projects/dsci410_510/Levin_MAED/data/split_aug/test --output_dir /projects/dsci410_510/Levin_MAED/data/test_degraded2  --parameter_name "Gaussian Noise (Mean = 2, Std = [0, 50]) " --gaussian_noise_mean 2
 ```
 
 Below are some Tensorboard outputs that span multiple model builds and training runs.
