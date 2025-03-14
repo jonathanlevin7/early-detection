@@ -19,13 +19,13 @@ def load_config(config_path):
         return yaml.safe_load(file)
 
 def load_model_from_checkpoint(checkpoint_path, num_classes):
-    if str(checkpoint_path[14:]).startswith("resnet50"):
+    if str(checkpoint_path[14:]).startswith("resnet50") or str(checkpoint_path[33:]).startswith("resnet50"):
         from src.models.architectures import ResNet50Classifier
         model = ResNet50Classifier.load_from_checkpoint(checkpoint_path, num_classes=num_classes)
-    elif str(checkpoint_path[14:]).startswith("scratch"):
+    elif str(checkpoint_path[14:]).startswith("scratch") or str(checkpoint_path[33:]).startswith("scratch"):
         from src.models.architectures import Scratch
         model = Scratch.load_from_checkpoint(checkpoint_path, num_classes=num_classes)
-    elif str(checkpoint_path[14:]).startswith("convnext"):
+    elif str(checkpoint_path[14:]).startswith("convnext") or str(checkpoint_path[33:]).startswith("convnext"):
         from src.models.architectures import ConvNeXtClassifier
         model = ConvNeXtClassifier.load_from_checkpoint(checkpoint_path, num_classes=num_classes)
     else:

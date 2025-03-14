@@ -1,7 +1,7 @@
 # early-detection
 Early detection of military aircraft.
 
-## Project Overview
+## Project Purpose
 This project aims to train a convolutional neural network for the purposes of being able to classify military aircraft earlier. Image classification is at the core of the project, but the focus is on testing how the model performs in classifying military aircraft depicted with varying levels of artificial degradation to simulate lower quality real-time images taken in suboptimal conditions or with insufficient equipment.
 
 ## Data Overview
@@ -29,6 +29,14 @@ python main.py --config config.yaml
 *Note: This will train the model and then evaluate it on the test set as well. Be sure your config file specifies the correct data directories to read in image data from. If you would like for your images to undergo an augmentation treatment prior to training (black and white, horizontal flip, vertical flip), run the following command first:*
 ```bash
 python preprocess_augments.py
+```
+Also be sure to enforce `with_augmentation` in [config.yaml](config.yaml):
+```yaml
+data:
+    ...
+    ...
+    ...
+    with_augmentation: true
 ```
 
 ### Evaluation Metrics
@@ -81,15 +89,29 @@ srun python inference.py --config config.yaml --effect gaussian_blur --start 1 -
 srun python inference.py --config config.yaml --effect gaussian_noise --start 0 --stop 100 --step 10 --input_dir /projects/dsci410_510/Levin_MAED/data/split_aug/test --output_dir /projects/dsci410_510/Levin_MAED/data/test_degraded2  --parameter_name "Gaussian Noise (Mean = [0, 100], Std = 1)" --gaussian_noise_std 1
 ```
 
-![Accuracy vs. Gaussian Noise (Mean = 2, Std = [0, 50])](assets/acc_effect_graphs/gaussian_noise_(mean_=_2,_std_=_[0,_50])__0.0_50.0_6_0.8934.png)
+![Accuracy vs. Gaussian Noise (Mean = 5, Std = [0, 100])](assets/acc_effect_graphs/gaussian_noise_(mean_=_5,_std_=_[0,_100])__0.0_100.0_6_0.8934.png)
 ```bash
-srun python inference.py --config config.yaml --effect gaussian_noise --start 0 --stop 50 --step 10 --input_dir /projects/dsci410_510/Levin_MAED/data/split_aug/test --output_dir /projects/dsci410_510/Levin_MAED/data/test_degraded2  --parameter_name "Gaussian Noise (Mean = 2, Std = [0, 50]) " --gaussian_noise_mean 2
+srun python inference.py --config config.yaml --effect gaussian_noise --start 0 --stop 100 --step 20 --input_dir /projects/dsci410_510/Levin_MAED/data/split_aug/test --output_dir /projects/dsci410_510/Levin_MAED/data/test_degraded2  --parameter_name "Gaussian Noise (Mean = 2, Std = [0, 50]) " --gaussian_noise_mean 5
 ```
 
 Below are some Tensorboard outputs that span multiple model builds and training runs.
 
 ![Validation Losses Over Time (Multiple Runs)](assets/validation_loss_graph.png)
 ![Validation Accuracies Over Time (Multiple Runs)](assets/validation_accuracy_graph.png)
+
+## Limitations and Use
+### Limitations
+While it achieves some strong results, the model still has some limitations:
+* Only 2 classes were trained on (F-14 and F-4)
+* Still struggles with noisy images (Gaussian noise degradation)
+* Degradations are applied artificially at inference time
+    * May make inference slower if selected effect is computationally expensive to apply to test set
+    * Artificial degradations may not always successfully mimic naturally (or not) occurring conditions that alter an image
+* Not optimized on any one degradation
+* Model accuracy may have room to improve (as of March 12, 2025)
+
+### Use
+The intended use of this model is to assist in the early detection of military aircraft in various conditions, potentially aiding in defense and surveillance operations.
 
 ## Conclusion
 In progress
