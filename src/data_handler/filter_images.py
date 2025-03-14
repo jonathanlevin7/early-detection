@@ -5,6 +5,7 @@ import torch
 from torch.utils.data import Dataset, DataLoader
 from torchvision import datasets, transforms
 from PIL import Image
+import argparse
 import yaml
 
 VALID_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.ppm', '.bmp', '.pgm', '.tif', '.tiff', '.webp']
@@ -45,7 +46,7 @@ class AircraftDatasetFilter(Dataset):
                         self.targets.append(self.class_to_idx[class_name]) #use the class to index mapping.
 
         print(f"Found {len(self.image_files)} files in {data_dir}")
-        print(f"Files found: {self.image_files}")
+        # print(f"Files found: {self.image_files}")
         print(f"Photos loaded: {photos_loaded}")
         print(f"Photos skipped: {photos_skipped}")
 
@@ -59,8 +60,19 @@ class AircraftDatasetFilter(Dataset):
             image = self.transform(image)
         label = self.targets[idx] #get the label.
         return image, label #return image and label.
+    
+def load_config(config_path):
+    with open(config_path, 'r') as file:
+        return yaml.safe_load(file)
 
 if __name__ == "__main__":
-    # data_dir = "data/raw"
-    data_dir = "/projects/dsci410_510/Levin_MAED/data/raw"
+    parser = argparse.ArgumentParser(description="Filter images using configuration file.")
+    parser.add_argument("--config", type=str, default="config.yaml", help="Path to the configuration file.")
+    args = parser.parse_args()
+
+    config = load_config(args.config)
+    data_dir = config['data']["original_data_path"]
     filtered_dataset = AircraftDatasetFilter(data_dir)
+    # data_dir = "data/raw"
+    # data_dir = "/projects/dsci410_510/Levin_MAED/data/raw"
+    # filtered_dataset = AircraftDatasetFilter(data_dir)
