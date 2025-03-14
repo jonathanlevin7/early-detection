@@ -11,7 +11,7 @@ The data comes from a Kaggle dataset linked [here](https://www.kaggle.com/datase
 
 ## Methods Overview
 ### Data Setup
-The data setup stage involves two main steps. First, small images (images with length or width < `crop_size`) are filtered out to ensure that only images of sufficient size are used for training. This filtering process may be executed once every time new images are added to the dataset and is handled by the script [filter_images.py](filter_images.py). Second, the images can optionally be augmented to increase the dataset's diversity. This augmentation step can be performed once after the filtering process and is managed by the script [preprocess_augments.py](preprocess_augments.py).
+The data setup stage involves two main steps. First, small images (images with length or width < `crop_size`) are filtered out to ensure that only images of sufficient size are used for training. This filtering process may be executed once every time new images are added to the dataset and is handled by the script [filter_images.py](filter_images.py). Second, the images can optionally be augmented to increase the dataset's diversity. This augmentation step can be performed once after the filtering process and is managed by the script [src/data_handler/preprocess_augments.py](src/data_handler/preprocess_augments.py).
 
 ### Data Preprocessing
 The data preprocessing pipeline includes several steps to ensure the images are suitable for training the neural network. These steps include resizing, cropping, normalization, and data augmentation. The images are resized to a uniform size, cropped to remove unnecessary parts, and normalized to have pixel values between 0 and 1. Data augmentation techniques such as random rotations, flips, and color jitter are applied to increase the diversity of the training data and improve the model's robustness.
@@ -26,11 +26,20 @@ To train the model, run the following command:
 ```bash
 python main.py --config config.yaml
 ```
-*Note: This will train the model and then evaluate it on the test set as well. Be sure your config file specifies the correct data directories to read in image data from. If you would like for your images to undergo an augmentation treatment prior to training (black and white, horizontal flip, vertical flip), run the following command first:*
+
+*Note: This will train the model and then evaluate it on the test set as well. Be sure your config file specifies the correct data directories to read in image data from. If you would like for your images to undergo an augmentation treatment prior to training (keep originals and add black and white, horizontal flip, vertical flip, 90º rotation), first specify the path to the original data directory and the output path for the augmented data directory by changing `original_data_path` and `original_data_path_aug`, respectively.*
+```yaml
+data:
+    original_data_path: /projects/dsci410_510/Levin_MAED/data/raw
+    original_data_path_aug: /projects/dsci410_510/Levin_MAED/data/raw_aug
+```
+
+*Then, run the following line **before** running [main.py](main.py):*
 ```bash
 python preprocess_augments.py
 ```
-Also be sure to enforce `with_augmentation` in [config.yaml](config.yaml):
+
+*Finally, enforce `with_augmentation` in [config.yaml](config.yaml) to ensure that [main.py](main.py) uses the new augmented data:*
 ```yaml
 data:
     ...
@@ -38,6 +47,8 @@ data:
     ...
     with_augmentation: true
 ```
+
+*Now [main.py](main.py) is ready to be ran as described above.*
 
 ### Evaluation Metrics
 The performance of the model, in both non-degraded and degraded tests, is evaluated using several metrics, including sklearn's classification report (which includes accuracy, precision, recall, and F1-score). A confusion matrix is also generated after training is complete and is saved as a JSON file in './outputs' by default. To view the confusion matrix, see [notebooks/confusion_matrix.ipynb](notebooks/confusion_matrix.ipynb).

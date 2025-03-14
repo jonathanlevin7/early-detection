@@ -1,5 +1,7 @@
 import os
 from PIL import Image, ImageOps
+import argparse
+import yaml
 
 def augment_images(input_dir, output_dir):
     """
@@ -46,8 +48,18 @@ def augment_images(input_dir, output_dir):
                     rotated_output_path = os.path.join(class_output_dir, f"rotated_{filename}")
                     rotated_image.save(rotated_output_path)
 
+def load_config(config_path):
+    with open(config_path, 'r') as file:
+        return yaml.safe_load(file)
+
 if __name__ == "__main__":
-    input_directory = "/projects/dsci410_510/Levin_MAED/data/raw"
-    output_directory = "/projects/dsci410_510/Levin_MAED/data/raw_aug"
+    parser = argparse.ArgumentParser(description="Augment images using configuration file.")
+    parser.add_argument("--config", type=str, default="config.yaml", help="Path to the configuration file.")
+    args = parser.parse_args()
+
+    config = load_config(args.config)
+    input_directory = config['data']["original_data_path"]
+    output_directory = config['data']["original_data_path_aug"]
+
     augment_images(input_directory, output_directory)
     print(f"Augmented images saved to {output_directory}")
